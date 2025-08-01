@@ -1,0 +1,172 @@
+{
+  "WordPress Hook": {
+    "prefix": "wphook",
+    "body": [
+      "add_action('${1:hook_name}', '${2:function_name}');",
+      "",
+      "function ${2:function_name}() {",
+      "\t${3:// Your code here}",
+      "}"
+    ],
+    "description": "WordPress action hook"
+  },
+  
+  "WordPress Filter": {
+    "prefix": "wpfilter", 
+    "body": [
+      "add_filter('${1:filter_name}', '${2:function_name}');",
+      "",
+      "function ${2:function_name}(\\$${3:value}) {",
+      "\t${4:// Your code here}",
+      "\treturn \\$${3:value};",
+      "}"
+    ],
+    "description": "WordPress filter hook"
+  },
+  
+  "WordPress Ajax": {
+    "prefix": "wpajax",
+    "body": [
+      "add_action('wp_ajax_${1:action_name}', '${2:function_name}');",
+      "add_action('wp_ajax_nopriv_${1:action_name}', '${2:function_name}');",
+      "",
+      "function ${2:function_name}() {",
+      "\t// Verify nonce",
+      "\tif (!wp_verify_nonce(\\$_POST['nonce'], '${1:action_name}_nonce')) {",
+      "\t\twp_die('Security check failed');",
+      "\t}",
+      "\t",
+      "\t${3:// Your AJAX code here}",
+      "\t",
+      "\twp_die(); // Always die in AJAX",
+      "}"
+    ],
+    "description": "WordPress AJAX handler"
+  },
+  
+  "WordPress Meta Box": {
+    "prefix": "wpmetabox",
+    "body": [
+      "add_action('add_meta_boxes', '${1:add_meta_box_function}');",
+      "",
+      "function ${1:add_meta_box_function}() {",
+      "\tadd_meta_box(",
+      "\t\t'${2:meta_box_id}',",
+      "\t\t'${3:Meta Box Title}',",
+      "\t\t'${4:meta_box_callback}',",
+      "\t\t'${5:post}',",
+      "\t\t'${6:normal}',",
+      "\t\t'${7:default}'",
+      "\t);",
+      "}",
+      "",
+      "function ${4:meta_box_callback}(\\$post) {",
+      "\t${8:// Meta box content}",
+      "}"
+    ],
+    "description": "WordPress meta box"
+  },
+  
+  "WordPress Cron": {
+    "prefix": "wpcron",
+    "body": [
+      "// Schedule event",
+      "if (!wp_next_scheduled('${1:cron_hook}')) {",
+      "\twp_schedule_event(time(), '${2:daily}', '${1:cron_hook}');",
+      "}",
+      "",
+      "// Hook the function",
+      "add_action('${1:cron_hook}', '${3:cron_function}');",
+      "",
+      "function ${3:cron_function}() {",
+      "\t${4:// Your cron code here}",
+      "}"
+    ],
+    "description": "WordPress cron job"
+  },
+  
+  "WordPress Option": {
+    "prefix": "wpoption",
+    "body": [
+      "// Get option",
+      "\\$${1:option_name} = get_option('${2:option_key}', '${3:default_value}');",
+      "",
+      "// Update option", 
+      "update_option('${2:option_key}', \\$${4:new_value});"
+    ],
+    "description": "WordPress options"
+  },
+  
+  "WordPress Transient": {
+    "prefix": "wptransient",
+    "body": [
+      "// Get transient",
+      "\\$${1:data} = get_transient('${2:transient_key}');",
+      "",
+      "if (false === \\$${1:data}) {",
+      "\t// Data not in cache, fetch it",
+      "\t\\$${1:data} = ${3:expensive_function()};",
+      "\t",
+      "\t// Store in transient for ${4:1 hour}",
+      "\tset_transient('${2:transient_key}', \\$${1:data}, ${5:HOUR_IN_SECONDS});",
+      "}",
+      "",
+      "return \\$${1:data};"
+    ],
+    "description": "WordPress transient cache"
+  },
+  
+  "Plugin Class": {
+    "prefix": "pluginclass",
+    "body": [
+      "class ${1:ClassName} {",
+      "\t",
+      "\t/**",
+      "\t * Instance of this class",
+      "\t */",
+      "\tprivate static \\$instance = null;",
+      "\t",
+      "\t/**",
+      "\t * Get instance (Singleton)",
+      "\t */",
+      "\tpublic static function get_instance() {",
+      "\t\tif (self::\\$instance === null) {",
+      "\t\t\tself::\\$instance = new self();",
+      "\t\t}",
+      "\t\treturn self::\\$instance;",
+      "\t}",
+      "\t",
+      "\t/**",
+      "\t * Constructor",
+      "\t */",
+      "\tprivate function __construct() {",
+      "\t\t${2:// Initialize}",
+      "\t}",
+      "\t",
+      "\t${3:// Your methods here}",
+      "}"
+    ],
+    "description": "WordPress plugin class with singleton"
+  },
+  
+  "Security Check": {
+    "prefix": "wpsecurity",
+    "body": [
+      "// Prevent direct access",
+      "if (!defined('ABSPATH')) {",
+      "\texit('Direct access not allowed.');",
+      "}",
+      "",
+      "// Check user capabilities",
+      "if (!current_user_can('${1:manage_options}')) {",
+      "\twp_die('Insufficient permissions');",
+      "}",
+      "",
+      "// Verify nonce",
+      "if (!wp_verify_nonce(\\$_POST['${2:nonce_field}'], '${3:nonce_action}')) {",
+      "\twp_die('Security check failed');",
+      "}"
+    ],
+    "description": "WordPress security checks"
+  }
+}
