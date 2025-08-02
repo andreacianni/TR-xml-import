@@ -163,17 +163,24 @@ class TrentinoImport {
      * Load all plugin files
      */
     private function load_plugin_files() {
-        // TODO: Implement autoloader or manual file loading
-        // Load core classes from /includes/
-        // Load admin classes from /admin/
-        // Load configuration files from /config/
+        // Load GitHub Updater first
+        require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-github-updater.php';
+        
+        // TODO: Load other core classes from /includes/
+        // TODO: Load admin classes from /admin/
+        // TODO: Load configuration files from /config/
     }
     
     /**
      * Initialize plugin components
      */
     private function init_components() {
-        // TODO: Initialize all plugin components
+        // Initialize GitHub Updater
+        if (is_admin()) {
+            new TrentinoGitHubUpdater(TRENTINO_IMPORT_PLUGIN_FILE);
+        }
+        
+        // TODO: Initialize other plugin components
         // Create instances of main classes
         // Set up component dependencies
     }
