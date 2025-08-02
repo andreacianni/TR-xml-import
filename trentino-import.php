@@ -3,9 +3,9 @@
  * Plugin Name: Trentino Import Plugin
  * Plugin URI: https://trentinoimmobiliare.it/
  * Description: Plugin WordPress per import automatico annunci immobiliari da XML GestionaleImmobiliare.it. Integrazione nativa con tema WpResidence.
- * Version: 1.0.0
- * Author: Andrea Zurini - Novacom
- * Author URI: https://novacom.it/
+ * Version: 1.0.2
+ * Author: Andrea Cianni - Novacom
+ * Author URI: https://www.novacomitalia.com/
  * License: GPL v2 or later
  * License URI: https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain: trentino-import
@@ -14,16 +14,16 @@
  * Tested up to: 6.6
  * Requires PHP: 7.4
  * Network: false
- * 
+ *
  * @package TrentinoImport
  * @version 1.0.0
  * @author Andrea Zurini
  * @copyright 2025 Novacom
- * 
+ *
  * This plugin provides automated import functionality for real estate listings
  * from GestionaleImmobiliare.it XML feeds, specifically designed for integration
  * with the WpResidence theme.
- * 
+ *
  * Features:
  * - Automated daily XML import from GestionaleImmobiliare.it
  * - Admin interface with 3-tab dashboard (Settings, Manual Import, Logs)
@@ -34,13 +34,13 @@
  * - WordPress cron integration for automation
  * - Secure credentials management
  * - Batch processing for performance
- * 
+ *
  * Directory Structure:
  * /includes/          - Core functionality classes
  * /admin/             - Admin interface and views
  * /config/            - Configuration files and mapping
  * /logs/              - Import logs and error tracking
- * 
+ *
  * Main Classes:
  * - XML_Downloader    - Download and authenticate XML from gestionale
  * - XML_Parser        - Parse and validate XML structure
@@ -69,22 +69,22 @@ define('TRENTINO_IMPORT_MIN_WP_VERSION', '5.0');
 
 /**
  * Main plugin class - TrentinoImport
- * 
+ *
  * Handles plugin initialization, activation, deactivation and core functionality
  * orchestration. This is the main entry point for the plugin.
  */
 class TrentinoImport {
-    
+
     /**
      * Plugin instance (Singleton pattern)
      */
     private static $instance = null;
-    
+
     /**
      * Plugin initialization flag
      */
     private $initialized = false;
-    
+
     /**
      * Plugin components
      */
@@ -95,10 +95,10 @@ class TrentinoImport {
     private $wp_importer = null;
     private $logger = null;
     private $cron_manager = null;
-    
+
     /**
      * Get plugin instance (Singleton)
-     * 
+     *
      * @return TrentinoImport
      */
     public static function get_instance() {
@@ -107,17 +107,17 @@ class TrentinoImport {
         }
         return self::$instance;
     }
-    
+
     /**
      * Private constructor (Singleton pattern)
      */
     private function __construct() {
         // Plugin will be initialized via init_plugin() method
     }
-    
+
     /**
      * Initialize the plugin
-     * 
+     *
      * This method handles all the plugin initialization logic including
      * requirements check, file loading, hooks registration, etc.
      */
@@ -126,51 +126,51 @@ class TrentinoImport {
         if ($this->initialized) {
             return;
         }
-        
+
         // Check system requirements
         if (!$this->check_requirements()) {
             return;
         }
-        
+
         // Load plugin files and initialize components
         $this->load_plugin_files();
         $this->init_components();
         $this->register_hooks();
-        
+
         // Mark as initialized
         $this->initialized = true;
-        
+
         // Hook for other plugins to know we're ready
         do_action('trentino_import_plugin_loaded');
     }
-    
+
     /**
      * Check if system meets plugin requirements
-     * 
+     *
      * @return bool True if requirements are met, false otherwise
      */
     private function check_requirements() {
         // TODO: Implement requirements check
         // - PHP version
-        // - WordPress version  
+        // - WordPress version
         // - WpResidence theme active
         // - Required PHP extensions (curl, simplexml, etc.)
-        
+
         return true;
     }
-    
+
     /**
      * Load all plugin files
      */
     private function load_plugin_files() {
         // Load GitHub Updater first
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-github-updater.php';
-        
+
         // TODO: Load other core classes from /includes/
         // TODO: Load admin classes from /admin/
         // TODO: Load configuration files from /config/
     }
-    
+
     /**
      * Initialize plugin components
      */
@@ -179,12 +179,12 @@ class TrentinoImport {
         if (is_admin()) {
             new TrentinoGitHubUpdater(TRENTINO_IMPORT_PLUGIN_FILE);
         }
-        
+
         // TODO: Initialize other plugin components
         // Create instances of main classes
         // Set up component dependencies
     }
-    
+
     /**
      * Register WordPress hooks
      */
@@ -192,7 +192,7 @@ class TrentinoImport {
         // TODO: Register all WordPress hooks
         // Admin hooks, cron hooks, ajax hooks, etc.
     }
-    
+
     /**
      * Plugin activation hook
      */
@@ -202,23 +202,23 @@ class TrentinoImport {
         // - Set default options
         // - Schedule cron events
         // - Check permissions and requirements
-        
+
         // Flush rewrite rules
         flush_rewrite_rules();
     }
-    
+
     /**
-     * Plugin deactivation hook  
+     * Plugin deactivation hook
      */
     public function deactivate_plugin() {
         // TODO: Implement deactivation logic
         // - Clear scheduled cron events
         // - Clean up temporary files
         // - Flush rewrite rules
-        
+
         flush_rewrite_rules();
     }
-    
+
     /**
      * Plugin uninstall hook
      */
@@ -233,7 +233,7 @@ class TrentinoImport {
 
 /**
  * Initialize the plugin
- * 
+ *
  * This is the main entry point - WordPress will call this when loading the plugin
  */
 function trentino_import_init() {
@@ -251,7 +251,7 @@ register_uninstall_hook(__FILE__, ['TrentinoImport', 'uninstall_plugin']);
 
 /**
  * Helper function to get plugin instance from anywhere
- * 
+ *
  * @return TrentinoImport
  */
 function trentino_import() {
