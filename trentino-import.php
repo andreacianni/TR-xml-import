@@ -16,8 +16,8 @@
  * Network: false
  *
  * @package TrentinoImport
- * @version 1.0.0
- * @author Andrea Zurini
+ * @version 1.0.3
+ * @author Andrea Cianni
  * @copyright 2025 Novacom
  *
  * This plugin provides automated import functionality for real estate listings
