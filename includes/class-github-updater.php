@@ -287,25 +287,40 @@ class TrentinoGitHubUpdater {
             return $transient;
         }
         
+        // Skip if our plugin is not in the checked list
+        if (!isset($transient->checked[$this->plugin_basename])) {
+            return $transient;
+        }
+        
         $latest_release = $this->get_latest_release();
         if (!$latest_release) {
             return $transient;
         }
         
         $current_version = $this->plugin_data['Version'];
-        $latest_version = $latest_release['tag_name'];
+        $latest_version = ltrim($latest_release['tag_name'], 'v'); // Remove 'v' prefix
+        
+        // Debug logging
+        error_log("Trentino Updater: Current {$current_version}, Latest {$latest_version}");
         
         if (version_compare($current_version, $latest_version, '<')) {
             $transient->response[$this->plugin_basename] = (object) [
+                'id' => $this->plugin_basename,
                 'slug' => dirname($this->plugin_basename),
                 'plugin' => $this->plugin_basename,
                 'new_version' => $latest_version,
-                'url' => $this->plugin_data['PluginURI'] ?? '',
+                'url' => 'https://github.com/' . $this->github_username . '/' . $this->github_repository,
                 'package' => $latest_release['zipball_url'],
-                'tested' => $this->plugin_data['Tested up to'] ?? '',
-                'requires_php' => $this->plugin_data['Requires PHP'] ?? '',
-                'compatibility' => []
+                'icons' => [],
+                'banners' => [],
+                'banners_rtl' => [],
+                'tested' => $this->plugin_data['Tested up to'] ?? get_bloginfo('version'),
+                'requires_php' => $this->plugin_data['Requires PHP'] ?? '7.4',
+                'compatibility' => new stdClass(),
+                'upgrade_notice' => $latest_release['body'] ?? ''
             ];
+            
+            error_log("Trentino Updater: Update available, added to transient");
         }
         
         return $transient;
@@ -328,20 +343,38 @@ class TrentinoGitHubUpdater {
             return $false;
         }
         
+        $latest_version = ltrim($latest_release['tag_name'], 'v');
+        
         return (object) [
             'name' => $this->plugin_data['Name'],
             'slug' => dirname($this->plugin_basename),
-            'version' => $latest_release['tag_name'],
+            'version' => $latest_version,
             'author' => $this->plugin_data['Author'],
             'author_profile' => $this->plugin_data['AuthorURI'] ?? '',
-            'requires' => $this->plugin_data['Requires at least'] ?? '',
-            'tested' => $this->plugin_data['Tested up to'] ?? '',
-            'requires_php' => $this->plugin_data['Requires PHP'] ?? '',
+            'contributors' => [],
+            'requires' => $this->plugin_data['Requires at least'] ?? '5.0',
+            'tested' => $this->plugin_data['Tested up to'] ?? get_bloginfo('version'),
+            'requires_php' => $this->plugin_data['Requires PHP'] ?? '7.4',
+            'rating' => 0,
+            'ratings' => [],
+            'num_ratings' => 0,
+            'support_threads' => 0,
+            'support_threads_resolved' => 0,
+            'downloaded' => 0,
+            'last_updated' => $latest_release['published_at'],
+            'added' => $latest_release['published_at'],
+            'homepage' => 'https://github.com/' . $this->github_username . '/' . $this->github_repository,
             'download_link' => $latest_release['zipball_url'],
+            'trunk' => $latest_release['zipball_url'],
             'sections' => [
-                'description' => $this->plugin_data['Description'],
-                'changelog' => $latest_release['body'] ?? 'No changelog available.'
-            ]
+                'description' => $this->plugin_data['Description'] ?? 'WordPress plugin for automated real estate listings import.',
+                'installation' => 'Upload and activate the plugin, then configure it from the admin panel.',
+                'changelog' => $latest_release['body'] ?? 'No changelog available.',
+                'faq' => 'For support, please visit the GitHub repository.'
+            ],
+            'short_description' => $this->plugin_data['Description'] ?? '',
+            'banners' => [],
+            'icons' => []
         ];
     }
     
@@ -366,20 +399,37 @@ class TrentinoGitHubUpdater {
      * Handle source selection after extraction
      */
     public function upgrader_source_selection($source, $remote_source, $upgrader) {
+        global $wp_filesystem;
+        
+        // Check if this is our plugin update
         if (!property_exists($upgrader, 'skin') || 
             !property_exists($upgrader->skin, 'plugin') || 
             $upgrader->skin->plugin !== $this->plugin_basename) {
             return $source;
         }
         
-        // GitHub creates directories like "username-repository-commit"
-        // We need to rename it to match the plugin directory
-        $new_source = dirname($source) . '/' . dirname($this->plugin_basename);
+        error_log("Trentino Updater: Source selection - Original: {$source}");
         
-        if (rename($source, $new_source)) {
+        // GitHub creates directories like "andreacianni-TR-xml-import-abc1234"
+        // We need to rename it to match the plugin directory name
+        $plugin_folder = dirname($this->plugin_basename); // trentino-import-plugin
+        $new_source = dirname($source) . '/' . $plugin_folder;
+        
+        error_log("Trentino Updater: Source selection - Target: {$new_source}");
+        
+        // Use WordPress filesystem API
+        if ($wp_filesystem && $wp_filesystem->move($source, $new_source)) {
+            error_log("Trentino Updater: Source renamed successfully");
             return $new_source;
         }
         
+        // Fallback to PHP rename
+        if (rename($source, $new_source)) {
+            error_log("Trentino Updater: Source renamed with PHP rename");
+            return $new_source;
+        }
+        
+        error_log("Trentino Updater: Source rename failed, using original");
         return $source;
     }
     
