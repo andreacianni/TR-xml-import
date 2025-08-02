@@ -3,7 +3,7 @@
  * Plugin Name: Trentino Import Plugin
  * Plugin URI: https://trentinoimmobiliare.it/
  * Description: Plugin WordPress per import automatico annunci immobiliari da XML GestionaleImmobiliare.it. Integrazione nativa con tema WpResidence.
- * Version: 1.0.3
+ * Version: 1.0.4
  * Author: Andrea Cianni - Novacom
  * Author URI: https://www.novacomitalia.com/
  * License: GPL v2 or later
@@ -16,9 +16,6 @@
  * Network: false
  *
  * @package TrentinoImport
- * @version 1.0.3
- * @author Andrea Cianni
- * @copyright 2025 Novacom
  *
  * This plugin provides automated import functionality for real estate listings
  * from GestionaleImmobiliare.it XML feeds, specifically designed for integration
@@ -57,7 +54,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Plugin version and core constants
-define('TRENTINO_IMPORT_VERSION', '1.0.3');
+define('TRENTINO_IMPORT_VERSION', '1.0.4');
 define('TRENTINO_IMPORT_PLUGIN_FILE', __FILE__);
 define('TRENTINO_IMPORT_PLUGIN_DIR', plugin_dir_path(__FILE__));
 define('TRENTINO_IMPORT_PLUGIN_URL', plugin_dir_url(__FILE__));
