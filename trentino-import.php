@@ -186,6 +186,121 @@ class TrentinoImport {
             }
         }
         
+        // Test REAL IMPORT - Complete End-to-End Workflow
+        if (isset($_POST['test_real_import'])) {
+            $downloader = new TrentinoXmlDownloader($logger);
+            $parser = new TrentinoXmlParser($logger);
+            $mapper = new TrentinoPropertyMapper($logger);
+            
+            echo '<div class="notice notice-info"><p><strong>REAL IMPORT TEST STARTED</strong> - Testing complete workflow with live XML data...</p></div>';
+            
+            // Step 1: Download real XML with credentials
+            $logger->info('=== REAL IMPORT TEST STARTED ===');
+            $logger->info('Step 1: Downloading real XML from GestionaleImmobiliare.it');
+            
+            // Set real credentials for test
+            $credentials = [
+                'username' => 'trentinoimmobiliare_it',
+                'password' => 'dget6g52'
+            ];
+            
+            $download_result = $downloader->download_xml($credentials['username'], $credentials['password']);
+            
+            if (!$download_result['success']) {
+                echo '<div class="notice notice-error"><p><strong>DOWNLOAD FAILED:</strong> ' . esc_html($download_result['error']) . '</p></div>';
+                $logger->error('Real import test failed at download step', ['error' => $download_result['error']]);
+                return;
+            }
+            
+            echo '<div class="notice notice-success"><p><strong>✅ DOWNLOAD SUCCESS:</strong> File size: ' . size_format(filesize($download_result['xml_file'])) . '</p></div>';
+            $logger->info('Download successful', ['file_size' => filesize($download_result['xml_file'])]);
+            
+            // Step 2: Parse real XML
+            $logger->info('Step 2: Parsing real XML data');
+            $parse_result = $parser->parse_xml_file($download_result['xml_file']);
+            
+            if (!$parse_result['success']) {
+                echo '<div class="notice notice-error"><p><strong>PARSING FAILED:</strong> ' . esc_html($parse_result['error']) . '</p></div>';
+                $logger->error('Real import test failed at parsing step', ['error' => $parse_result['error']]);
+                return;
+            }
+            
+            echo '<div class="notice notice-success"><p><strong>✅ PARSING SUCCESS:</strong> Found ' . count($parse_result['properties']) . ' properties total</p></div>';
+            $logger->info('Parsing successful', ['total_properties' => count($parse_result['properties'])]);
+            
+            // Step 3: Map properties
+            $logger->info('Step 3: Mapping properties to WpResidence format');
+            $map_result = $mapper->map_properties($parse_result['properties']);
+            
+            if (!$map_result['success']) {
+                echo '<div class="notice notice-error"><p><strong>MAPPING FAILED:</strong> Mapping error occurred</p></div>';
+                $logger->error('Real import test failed at mapping step');
+                return;
+            }
+            
+            echo '<div class="notice notice-success"><p><strong>✅ MAPPING SUCCESS:</strong> Mapped ' . count($map_result['properties']) . ' properties with meta fields</p></div>';
+            $logger->info('Mapping successful', ['mapped_properties' => count($map_result['properties'])]);
+            
+            // Step 4: Show detailed analysis
+            $provinces = [];
+            $categories = [];
+            $sample_property = null;
+            
+            foreach ($map_result['properties'] as $property) {
+                // Count provinces
+                if (isset($property['meta_fields']['property_state'])) {
+                    $province = $property['meta_fields']['property_state'];
+                    $provinces[$province] = ($provinces[$province] ?? 0) + 1;
+                }
+                
+                // Count categories  
+                if (isset($property['meta_fields']['property_category'])) {
+                    $category = $property['meta_fields']['property_category'];
+                    $categories[$category] = ($categories[$category] ?? 0) + 1;
+                }
+                
+                // Get first property as sample
+                if ($sample_property === null) {
+                    $sample_property = $property;
+                }
+            }
+            
+            echo '<div class="notice notice-info">';
+            echo '<p><strong>📊 REAL DATA ANALYSIS:</strong></p>';
+            echo '<p><strong>Provinces:</strong> ' . implode(', ', array_map(function($k, $v) { return "$k ($v)"; }, array_keys($provinces), $provinces)) . '</p>';
+            echo '<p><strong>Categories:</strong> ' . implode(', ', array_map(function($k, $v) { return "$k ($v)"; }, array_keys($categories), $categories)) . '</p>';
+            echo '<p><strong>Meta Fields per Property:</strong> ' . count($sample_property['meta_fields']) . '</p>';
+            echo '</div>';
+            
+            // Step 5: Show sample property details
+            if ($sample_property) {
+                echo '<div class="notice notice-info">';
+                echo '<p><strong>🏠 SAMPLE PROPERTY:</strong></p>';
+                echo '<p><strong>Title:</strong> ' . esc_html($sample_property['post_title']) . '</p>';
+                echo '<p><strong>Price:</strong> €' . number_format($sample_property['meta_fields']['property_price'] ?? 0) . '</p>';
+                echo '<p><strong>City:</strong> ' . esc_html($sample_property['meta_fields']['property_city'] ?? 'N/A') . '</p>';
+                echo '<p><strong>Bedrooms:</strong> ' . ($sample_property['meta_fields']['property_bedrooms'] ?? 'N/A') . '</p>';
+                echo '<p><strong>Size:</strong> ' . ($sample_property['meta_fields']['property_size'] ?? 'N/A') . ' m²</p>';
+                echo '</div>';
+            }
+            
+            echo '<div class="notice notice-success"><p><strong>🎉 REAL IMPORT TEST COMPLETED SUCCESSFULLY!</strong><br>';
+            echo 'Total Properties: ' . count($map_result['properties']) . ' | ';
+            echo 'Provinces: ' . count($provinces) . ' | ';
+            echo 'Categories: ' . count($categories) . '</p></div>';
+            
+            $logger->info('=== REAL IMPORT TEST COMPLETED SUCCESSFULLY ===', [
+                'total_properties' => count($map_result['properties']),
+                'provinces' => $provinces,
+                'categories' => $categories
+            ]);
+            
+            // Cleanup
+            if (file_exists($download_result['xml_file'])) {
+                unlink($download_result['xml_file']);
+            }
+        }
+        
         // Test all log levels
         if (isset($_POST['test_logger'])) {
             $session_id = $logger->start_import_session('test');
@@ -217,6 +332,20 @@ class TrentinoImport {
                 <form method="post">
                     <p>Click this button to test all logger functions:</p>
                     <input type="submit" name="test_logger" class="button button-primary" value="Run Logger Test">
+                </form>
+            </div>
+            
+            <div class="card">
+                <h2>🧪 Test REAL Import</h2>
+                <form method="post">
+                    <p><strong>Complete end-to-end test with live XML data:</strong></p>
+                    <p>• Downloads real XML from GestionaleImmobiliare.it<br>
+                    • Extracts .tar.gz archive<br>
+                    • Parses complete XML data<br>
+                    • Maps all properties to WpResidence format<br>
+                    • Shows detailed analysis of real data</p>
+                    <p style="color: #d63638;"><strong>⚠️ Uses real credentials - will download live data!</strong></p>
+                    <input type="submit" name="test_real_import" class="button button-primary" value="🚀 Run REAL Import Test">
                 </form>
             </div>
             
