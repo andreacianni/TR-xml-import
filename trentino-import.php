@@ -173,6 +173,9 @@ class TrentinoImport {
      * Initialize plugin components
      */
     private function init_components() {
+        // Initialize Logger first
+        $this->logger = TrentinoImportLogger::get_instance();
+        
         // Initialize GitHub Updater
         if (is_admin()) {
             new TrentinoGitHubUpdater(TRENTINO_IMPORT_PLUGIN_FILE);
@@ -189,6 +192,118 @@ class TrentinoImport {
     private function register_hooks() {
         // TODO: Register all WordPress hooks
         // Admin hooks, cron hooks, ajax hooks, etc.
+        
+        // TEMPORARY: Logger test hook
+        add_action('admin_menu', [$this, 'add_test_logger_page']);
+    }
+    
+    /**
+     * TEMPORARY: Add logger test page
+     */
+    public function add_test_logger_page() {
+        add_plugins_page(
+            'Logger Test',
+            'Logger Test',
+            'manage_options',
+            'trentino-logger-test',
+            [$this, 'logger_test_page']
+        );
+    }
+    
+    /**
+     * TEMPORARY: Logger test page content
+     */
+    public function logger_test_page() {
+        $logger = trentino_import_logger();
+        
+        // Test all log levels
+        if (isset($_POST['test_logger'])) {
+            $session_id = $logger->start_import_session('test');
+            
+            $logger->debug('This is a debug message', ['test_data' => 'debug_value']);
+            $logger->info('This is an info message', ['test_data' => 'info_value']);
+            $logger->warning('This is a warning message', ['test_data' => 'warning_value']);
+            $logger->error('This is an error message', ['test_data' => 'error_value']);
+            
+            $logger->log_import_step('xml_download', 'started');
+            $logger->log_import_step('xml_download', 'completed', ['file_size' => '2.5MB']);
+            
+            $logger->end_import_session([
+                'duration' => 5,
+                'properties_processed' => 100,
+                'properties_imported' => 95,
+                'errors_count' => 0
+            ]);
+            
+            echo '<div class="notice notice-success"><p>Logger test completed! Check logs below.</p></div>';
+        }
+        
+        ?>
+        <div class="wrap">
+            <h1>Trentino Import - Logger Test</h1>
+            
+            <div class="card">
+                <h2>Test Logger</h2>
+                <form method="post">
+                    <p>Click this button to test all logger functions:</p>
+                    <input type="submit" name="test_logger" class="button button-primary" value="Run Logger Test">
+                </form>
+            </div>
+            
+            <div class="card">
+                <h2>Recent Logs (Last 20)</h2>
+                <div style="background: #f1f1f1; padding: 10px; font-family: monospace; max-height: 400px; overflow-y: auto;">
+                    <?php
+                    $recent_logs = $logger->get_recent_logs(20);
+                    if (empty($recent_logs)) {
+                        echo '<p>No logs found.</p>';
+                    } else {
+                        foreach ($recent_logs as $log) {
+                            $level_color = [
+                                'DEBUG' => '#666',
+                                'INFO' => '#0073aa',
+                                'WARNING' => '#f56e28',
+                                'ERROR' => '#dc3232',
+                                'CRITICAL' => '#dc3232'
+                            ];
+                            $color = $level_color[$log['level']] ?? '#333';
+                            echo '<div style="margin-bottom: 5px; color: ' . $color . ';">' . esc_html($log['raw']) . '</div>';
+                        }
+                    }
+                    ?>
+                </div>
+            </div>
+            
+            <div class="card">
+                <h2>Log Files</h2>
+                <table class="wp-list-table widefat fixed striped">
+                    <thead>
+                        <tr>
+                            <th>File</th>
+                            <th>Size</th>
+                            <th>Modified</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php
+                        $log_files = $logger->get_log_files();
+                        if (empty($log_files)) {
+                            echo '<tr><td colspan="3">No log files found.</td></tr>';
+                        } else {
+                            foreach ($log_files as $file) {
+                                echo '<tr>';
+                                echo '<td>' . esc_html($file['filename']) . '</td>';
+                                echo '<td>' . esc_html($file['size_formatted']) . '</td>';
+                                echo '<td>' . esc_html($file['modified_formatted']) . '</td>';
+                                echo '</tr>';
+                            }
+                        }
+                        ?>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        <?php
     }
 
     /**
