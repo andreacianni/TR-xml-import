@@ -162,6 +162,7 @@ class TrentinoImport {
     private function load_plugin_files() {
         // Load core classes in order of dependency
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-logger.php';
+        require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-xml-downloader.php';
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-github-updater.php';
 
         // TODO: Load other core classes from /includes/
@@ -175,6 +176,9 @@ class TrentinoImport {
     private function init_components() {
         // Initialize Logger first
         $this->logger = TrentinoImportLogger::get_instance();
+        
+        // Initialize XML Downloader
+        $this->xml_downloader = new TrentinoXmlDownloader($this->logger);
         
         // Initialize GitHub Updater
         if (is_admin()) {
@@ -216,6 +220,18 @@ class TrentinoImport {
     public function logger_test_page() {
         $logger = trentino_import_logger();
         
+        // Test XML Downloader connection
+        if (isset($_POST['test_connection'])) {
+            $downloader = new TrentinoXmlDownloader($logger);
+            $result = $downloader->test_connection();
+            
+            if ($result['success']) {
+                echo '<div class="notice notice-success"><p>Connection test successful!</p></div>';
+            } else {
+                echo '<div class="notice notice-error"><p>Connection test failed: ' . esc_html($result['error']) . '</p></div>';
+            }
+        }
+        
         // Test all log levels
         if (isset($_POST['test_logger'])) {
             $session_id = $logger->start_import_session('test');
@@ -248,6 +264,15 @@ class TrentinoImport {
                     <p>Click this button to test all logger functions:</p>
                     <input type="submit" name="test_logger" class="button button-primary" value="Run Logger Test">
                 </form>
+            </div>
+            
+            <div class="card">
+                <h2>Test XML Downloader</h2>
+                <form method="post">
+                    <p>Test connection to GestionaleImmobiliare.it (requires credentials):</p>
+                    <input type="submit" name="test_connection" class="button button-secondary" value="Test Connection">
+                </form>
+                <p><strong>Note:</strong> You need to configure username/password in plugin settings first.</p>
             </div>
             
             <div class="card">
