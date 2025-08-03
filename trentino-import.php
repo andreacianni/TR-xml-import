@@ -188,7 +188,48 @@ class TrentinoImport {
             }
         }
         
-        // Test REAL IMPORT - Complete End-to-End Workflow with Memory Optimization
+        // Test SAMPLE XML - With corrected parser
+        if (isset($_POST['test_sample_xml'])) {
+            $parser = new TrentinoXmlParser($logger);
+            $mapper = new TrentinoPropertyMapper($logger);
+            
+            // Use the sample file you prepared
+            $sample_xml_path = '/public_html/trentino-test/sample-annunci.xml';
+            
+            echo '<div class="notice notice-info"><p><strong>SAMPLE XML TEST STARTED</strong> - Using sample file with 10k lines...</p></div>';
+            
+            $logger->info('=== SAMPLE XML TEST STARTED ===');
+            $logger->info('Testing with sample file: ' . $sample_xml_path);
+            
+            // Parse sample XML
+            $parse_result = $parser->parse_xml_file($sample_xml_path);
+            
+            if (!$parse_result['success']) {
+                echo '<div class="notice notice-error"><p><strong>SAMPLE PARSING FAILED:</strong> ' . esc_html($parse_result['error']) . '</p></div>';
+                $logger->error('Sample XML test failed at parsing step', ['error' => $parse_result['error']]);
+                return;
+            }
+            
+            echo '<div class="notice notice-success"><p><strong>✅ SAMPLE PARSING SUCCESS:</strong> Found ' . count($parse_result['properties']) . ' properties</p></div>';
+            
+            // Map properties
+            $map_result = $mapper->map_properties($parse_result['properties']);
+            
+            if ($map_result['success']) {
+                echo '<div class="notice notice-success"><p><strong>✅ SAMPLE MAPPING SUCCESS:</strong> Mapped ' . count($map_result['properties']) . ' properties</p></div>';
+            }
+            
+            // Show statistics from corrected parser
+            $stats = $parse_result['stats'];
+            echo '<div class="notice notice-info">';
+            echo '<p><strong>📊 SAMPLE DATA ANALYSIS:</strong></p>';
+            echo '<p><strong>Provinces:</strong> ' . implode(', ', array_map(function($k, $v) { return "$k ($v)"; }, array_keys($stats['provinces'] ?? []), $stats['provinces'] ?? [])) . '</p>';
+            echo '<p><strong>Categories:</strong> ' . implode(', ', array_map(function($k, $v) { return "$k ($v)"; }, array_keys($stats['categories'] ?? []), $stats['categories'] ?? [])) . '</p>';
+            echo '<p><strong>Sample Property:</strong> ' . (isset($stats['sample_property']) ? 'Available' : 'None') . '</p>';
+            echo '</div>';
+            
+            $logger->info('=== SAMPLE XML TEST COMPLETED ===', $stats);
+        }
         if (isset($_POST['test_real_import'])) {
             $downloader = new TrentinoXmlDownloader($logger);
             $parser = new TrentinoXmlParserMemoryOptimized($logger); // Use memory-optimized parser for large files
@@ -332,6 +373,19 @@ class TrentinoImport {
         ?>
         <div class="wrap">
             <h1>Trentino Import - Logger Test</h1>
+            
+            <div class="card">
+                <h2>🧪 Test SAMPLE XML</h2>
+                <form method="post">
+                    <p><strong>Test with sample XML (10k lines) - CORRECTED PARSER:</strong></p>
+                    <p>• Uses your prepared sample file: `/trentino-test/sample-annunci.xml`<br>
+                    • Tests corrected XML structure parsing (`&lt;dataset&gt;&lt;annuncio&gt;&lt;info&gt;`)<br>
+                    • Faster testing without full download<br>
+                    • Validates parser fixes for real GI structure</p>
+                    <p style="color: #d63638;"><strong>⚠️ Uses corrected parser - should find properties!</strong></p>
+                    <input type="submit" name="test_sample_xml" class="button button-primary" value="🧪 Test Sample XML (Corrected)">
+                </form>
+            </div>
             
             <div class="card">
                 <h2>Test Logger</h2>
