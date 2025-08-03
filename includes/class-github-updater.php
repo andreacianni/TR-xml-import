@@ -7,7 +7,7 @@
  * 
  * @package TrentinoImport
  * @version 1.0.0
- * @author Andrea Zurini - Novacom
+ * @author Andrea Cianni - Novacom
  */
 
 // Prevent direct access

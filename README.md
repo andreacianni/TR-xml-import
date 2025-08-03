@@ -57,6 +57,6 @@ trentino-import-plugin/
 - [ ] Testing e deployment
 
 ## 👨‍💻 Developer
-Andrea Zurini - Novacom  
+Andrea Cianni - Novacom  
 Progetto: Trentino Immobiliare  
 Data: Agosto 2025
