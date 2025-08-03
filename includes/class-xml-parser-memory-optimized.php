@@ -138,8 +138,8 @@ class TrentinoXmlParserMemoryOptimized {
             ini_set('memory_limit', $this->config['memory_limit']);
         }
         
-        // Increase execution time for large files
-        set_time_limit(300); // 5 minutes
+        // Increase execution time for large files (reduced for testing)
+        set_time_limit(120); // 2 minutes for testing
         
         $this->reset_stats();
         $this->stats['start_time'] = microtime(true);
@@ -180,8 +180,8 @@ class TrentinoXmlParserMemoryOptimized {
                         }
                         $elements_found[$element_name]++;
                         
-                        // Log first 20 elements for debugging
-                        if (array_sum($elements_found) <= 20) {
+                        // Log first 5 elements for debugging only
+                        if (array_sum($elements_found) <= 5) {
                             $this->logger->info('XMLReader Element found', [
                                 'element' => $element_name,
                                 'depth' => $depth,
@@ -210,6 +210,12 @@ class TrentinoXmlParserMemoryOptimized {
                                 'element' => $target_element,
                                 'property_count' => $this->stats['total_properties']
                             ]);
+                            
+                            // TEST MODE: Limit to 10 properties for testing
+                            if ($this->stats['total_properties'] >= 10) {
+                                $this->logger->info('🧪 TEST MODE: Reached 10 properties limit - stopping for testing');
+                                break 2; // Break out of while loop
+                            }
                         } else if ($current_property !== null) {
                             // Store current element name
                             $current_element = $element_name;
@@ -235,8 +241,8 @@ class TrentinoXmlParserMemoryOptimized {
                             $this->process_property($current_property, $properties);
                             $current_property = null;
                             
-                            // Progress logging
-                            if ($this->stats['total_properties'] % $this->config['progress_interval'] === 0) {
+                            // Progress logging (reduced for testing)
+                            if ($this->stats['total_properties'] % 5 === 0) { // Every 5 instead of 100
                                 $this->logger->info('🔄 Streaming progress', [
                                     'properties_processed' => $this->stats['total_properties'],
                                     'valid_properties' => $this->stats['valid_properties'],
@@ -258,9 +264,9 @@ class TrentinoXmlParserMemoryOptimized {
                     break;
                 }
                 
-                // ENHANCED DEBUG: Stop after processing elements if no properties found
-                if (array_sum($elements_found) > 2000 && $this->stats['total_properties'] === 0) {
-                    $this->logger->warning('🚨 Processed 2000+ elements but found 0 properties', [
+                // ENHANCED DEBUG: Stop after processing elements if no properties found (reduced for testing)
+                if (array_sum($elements_found) > 500 && $this->stats['total_properties'] === 0) {
+                    $this->logger->warning('🚨 Processed 500+ elements but found 0 properties', [
                         'elements_found' => $elements_found,
                         'property_element_detected' => $property_element_name,
                         'search_candidates' => $property_candidates
