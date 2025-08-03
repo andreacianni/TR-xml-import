@@ -79,12 +79,10 @@ class TrentinoXmlParserMemoryOptimized {
     
     private function load_required_fields() {
         $this->required_fields = [
-            'id_immobile',
-            'titolo',
-            'prezzo_vendita',
-            'categoria',
-            'provincia',
-            'citta'
+            'id',
+            'title',
+            'price',
+            'categorie_id'
         ];
     }
     
@@ -103,7 +101,7 @@ class TrentinoXmlParserMemoryOptimized {
     }
     
     /**
-     * Parse large XML file using streaming approach
+     * Parse large XML file using streaming approach with DYNAMIC detection
      */
     public function parse_xml_file($xml_file_path) {
         $this->logger->info('Starting STREAMING XML parsing for large file', [
@@ -117,13 +115,13 @@ class TrentinoXmlParserMemoryOptimized {
         
         $file_size = filesize($xml_file_path);
         
-        // For very large files, use streaming approach with DYNAMIC ELEMENT DETECTION
+        // For very large files, use streaming approach
         if ($file_size > 50 * 1024 * 1024) { // 50MB+
-            $this->logger->info('Large file detected - using DYNAMIC streaming parser', [
+            $this->logger->info('Large file detected - using streaming parser', [
                 'file_size' => size_format($file_size),
                 'threshold' => '50MB'
             ]);
-            return $this->parse_xml_streaming_dynamic($xml_file_path);
+            return $this->parse_xml_streaming($xml_file_path);
         } else {
             // For smaller files, use standard parsing
             $this->logger->info('Small file detected - using standard parser');
@@ -132,9 +130,9 @@ class TrentinoXmlParserMemoryOptimized {
     }
     
     /**
-     * Parse XML using DYNAMIC streaming XMLReader (auto-detects property elements)
+     * Parse XML using streaming XMLReader (for large files) with DYNAMIC element detection
      */
-    private function parse_xml_streaming_dynamic($xml_file_path) {
+    private function parse_xml_streaming($xml_file_path) {
         // Set memory limit
         if (!empty($this->config['memory_limit'])) {
             ini_set('memory_limit', $this->config['memory_limit']);
@@ -167,7 +165,7 @@ class TrentinoXmlParserMemoryOptimized {
             // DEBUG: Track elements found
             $elements_found = [];
             $depth = 0;
-            $property_candidates = ['immobile', 'property', 'listing', 'annuncio', 'item', 'record'];
+            $property_candidates = ['annuncio', 'immobile', 'property', 'listing', 'item', 'record'];
             
             // Stream through XML
             while ($reader->read()) {
@@ -200,8 +198,8 @@ class TrentinoXmlParserMemoryOptimized {
                             ]);
                         }
                         
-                        // Use detected property element OR fallback to immobile
-                        $target_element = $property_element_name ?: 'immobile';
+                        // Use detected property element OR fallback to annuncio
+                        $target_element = $property_element_name ?: 'annuncio';
                         
                         if ($element_name === $target_element) {
                             // Start new property
@@ -230,7 +228,7 @@ class TrentinoXmlParserMemoryOptimized {
                         
                     case XMLReader::END_ELEMENT:
                         $depth--;
-                        $target_element = $property_element_name ?: 'immobile';
+                        $target_element = $property_element_name ?: 'annuncio';
                         
                         if ($reader->localName === $target_element && $current_property !== null) {
                             // Process completed property
@@ -285,7 +283,7 @@ class TrentinoXmlParserMemoryOptimized {
             $this->logger->info('🎯 DYNAMIC PARSING COMPLETED', [
                 'property_element_detected' => $property_element_name,
                 'total_elements_found' => $elements_found,
-                'target_element_count' => $elements_found[$property_element_name ?: 'immobile'] ?? 0,
+                'target_element_count' => $elements_found[$property_element_name ?: 'annuncio'] ?? 0,
                 'properties_processed' => $this->stats['total_properties']
             ]);
             
@@ -315,163 +313,6 @@ class TrentinoXmlParserMemoryOptimized {
             ]);
             
             return $this->error_result('Dynamic streaming parsing failed: ' . $e->getMessage());
-        }
-    }
-        // Set memory limit
-        if (!empty($this->config['memory_limit'])) {
-            ini_set('memory_limit', $this->config['memory_limit']);
-        }
-        
-        // Increase execution time for large files
-        set_time_limit(300); // 5 minutes
-        
-        $this->reset_stats();
-        $this->stats['start_time'] = microtime(true);
-        
-        $properties = [];
-        $current_property = null;
-        $current_element = '';
-        
-        // DEBUG: Analyze XML structure first
-        $this->debug_xml_structure($xml_file_path);
-        
-        try {
-            // Create XMLReader for streaming
-            $reader = new XMLReader();
-            
-            if (!$reader->open($xml_file_path)) {
-                return $this->error_result('Cannot open XML file for reading');
-            }
-            
-            $this->logger->info('XMLReader opened successfully - starting streaming parse');
-            
-            // DEBUG: Track elements found
-            $elements_found = [];
-            $depth = 0;
-            
-            // Stream through XML
-            while ($reader->read()) {
-                switch ($reader->nodeType) {
-                    case XMLReader::ELEMENT:
-                        $depth++;
-                        $element_name = $reader->localName;
-                        
-                        // Track all elements for debugging
-                        if (!isset($elements_found[$element_name])) {
-                            $elements_found[$element_name] = 0;
-                        }
-                        $elements_found[$element_name]++;
-                        
-                        // Log first 10 elements for debugging
-                        if (array_sum($elements_found) <= 10) {
-                            $this->logger->info('XMLReader Element found', [
-                                'element' => $element_name,
-                                'depth' => $depth,
-                                'count' => $elements_found[$element_name]
-                            ]);
-                        }
-                        
-                        if ($element_name === 'annuncio') {
-                            // Start new property
-                            $current_property = [];
-                            $this->stats['total_properties']++;
-                            
-                            $this->logger->info('Property element found!', [
-                                'property_count' => $this->stats['total_properties']
-                            ]);
-                        } else if ($current_property !== null) {
-                            // Store current element name
-                            $current_element = $element_name;
-                        }
-                        break;
-                        
-                    case XMLReader::TEXT:
-                        if ($current_property !== null && !empty($current_element)) {
-                            // Store element value
-                            $value = trim($reader->value);
-                            if (!empty($value)) {
-                                $current_property[$current_element] = $this->process_field_value($current_element, $value);
-                            }
-                        }
-                        break;
-                        
-                    case XMLReader::END_ELEMENT:
-                        $depth--;
-                        if ($reader->localName === 'annuncio' && $current_property !== null) {
-                            // Process completed property
-                            $this->process_property($current_property, $properties);
-                            $current_property = null;
-                            
-                            // Progress logging
-                            if ($this->stats['total_properties'] % $this->config['progress_interval'] === 0) {
-                                $this->logger->info('Streaming progress', [
-                                    'properties_processed' => $this->stats['total_properties'],
-                                    'valid_properties' => $this->stats['valid_properties'],
-                                    'memory_usage' => size_format(memory_get_usage(true))
-                                ]);
-                            }
-                            
-                            // Memory management - clear processed properties if too many
-                            if (count($properties) > $this->config['chunk_size'] * 10) {
-                                $this->logger->warning('Too many properties in memory - may need chunked processing');
-                            }
-                        } else if ($current_property !== null) {
-                            $current_element = '';
-                        }
-                        break;
-                }
-                
-                // Safety check for maximum properties
-                if ($this->stats['total_properties'] > $this->config['max_properties']) {
-                    $this->logger->warning('Maximum properties limit reached', [
-                        'limit' => $this->config['max_properties'],
-                        'processed' => $this->stats['total_properties']
-                    ]);
-                    break;
-                }
-                
-                // Stop after processing some elements for initial debugging
-                if (array_sum($elements_found) > 1000 && $this->stats['total_properties'] === 0) {
-                    $this->logger->warning('Processed 1000+ elements but found 0 properties - stopping for analysis', [
-                        'elements_found' => $elements_found
-                    ]);
-                    break;
-                }
-            }
-            
-            $reader->close();
-            
-            // Log final elements analysis
-            $this->logger->info('Final XML elements analysis', [
-                'total_elements_found' => $elements_found,
-                'annuncio_count' => $elements_found['annuncio'] ?? 0
-            ]);
-            
-            // Calculate final statistics
-            $this->stats['end_time'] = microtime(true);
-            $this->stats['duration'] = $this->stats['end_time'] - $this->stats['start_time'];
-            $this->stats['memory_peak'] = memory_get_peak_usage(true);
-            
-            $this->logger->info('Streaming XML parsing completed', [
-                'total_properties' => $this->stats['total_properties'],
-                'valid_properties' => $this->stats['valid_properties'],
-                'filtered_properties' => $this->stats['filtered_properties'],
-                'duration' => round($this->stats['duration'], 2) . 's',
-                'memory_peak' => size_format($this->stats['memory_peak']),
-                'errors_count' => count($this->stats['errors'])
-            ]);
-            
-            return $this->success_result($properties);
-            
-        } catch (Exception $e) {
-            $this->logger->error('Streaming XML parsing failed', [
-                'error' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'properties_processed' => $this->stats['total_properties']
-            ]);
-            
-            return $this->error_result('Streaming parsing failed: ' . $e->getMessage());
         }
     }
     
@@ -589,7 +430,7 @@ class TrentinoXmlParserMemoryOptimized {
         } else {
             $this->stats['invalid_properties']++;
             $this->stats['errors'][] = [
-                'property_id' => $property_data['id_immobile'] ?? 'unknown',
+                'property_id' => $property_data['id'] ?? 'unknown',
                 'errors' => $validation_result['errors']
             ];
         }
@@ -600,24 +441,21 @@ class TrentinoXmlParserMemoryOptimized {
      */
     private function add_derived_fields($property) {
         // Add WP-compatible category
-        if (isset($property['categoria'])) {
-            $property['wp_category'] = $this->property_categories[$property['categoria']] ?? 'property';
+        if (isset($property['categorie_id'])) {
+            $property['wp_category'] = $this->property_categories[$property['categorie_id']] ?? 'property';
         }
         
         // Add price display
-        if (isset($property['prezzo_vendita']) && $property['prezzo_vendita'] > 0) {
-            $property['price_display'] = '€ ' . number_format($property['prezzo_vendita'], 0, ',', '.');
-            $property['listing_type'] = 'sale';
-        } else if (isset($property['prezzo_affitto']) && $property['prezzo_affitto'] > 0) {
-            $property['price_display'] = '€ ' . number_format($property['prezzo_affitto'], 0, ',', '.') . '/mese';
-            $property['listing_type'] = 'rent';
+        if (isset($property['price']) && $property['price'] > 0) {
+            $property['price_display'] = '€ ' . number_format($property['price'], 0, ',', '.');
+            $property['listing_type'] = 'rent'; // Default for GestionaleImmobiliare
         }
         
         // Add full address
         $address_parts = array_filter([
             $property['indirizzo'] ?? '',
-            $property['citta'] ?? '',
-            $property['provincia'] ?? ''
+            $property['zona'] ?? '',
+            $property['comune'] ?? ''
         ]);
         $property['full_address'] = implode(', ', $address_parts);
         
@@ -640,14 +478,9 @@ class TrentinoXmlParserMemoryOptimized {
             }
         }
         
-        // Validate price
-        if (!isset($property['prezzo_vendita']) && !isset($property['prezzo_affitto'])) {
-            $errors[] = "Missing both sale and rent price";
-        }
-        
         // Validate category
-        if (isset($property['categoria']) && !isset($this->property_categories[$property['categoria']])) {
-            $errors[] = "Unknown property category: {$property['categoria']}";
+        if (isset($property['categorie_id']) && !isset($this->property_categories[$property['categorie_id']])) {
+            $errors[] = "Unknown property category: {$property['categorie_id']}";
         }
         
         return [
@@ -664,7 +497,22 @@ class TrentinoXmlParserMemoryOptimized {
             return true;
         }
         
-        $property_province = $property['provincia'] ?? '';
+        // For GestionaleImmobiliare, need to extract province from comune or other fields
+        $property_province = '';
+        
+        // Try to extract province from available fields
+        if (isset($property['provincia'])) {
+            $property_province = $property['provincia'];
+        } elseif (isset($property['comune'])) {
+            // Parse province from comune field if needed
+            $comune = $property['comune'];
+            if (strpos($comune, 'Trento') !== false || strpos($comune, 'TN') !== false) {
+                $property_province = 'TN';
+            } elseif (strpos($comune, 'Bolzano') !== false || strpos($comune, 'BZ') !== false) {
+                $property_province = 'BZ';
+            }
+        }
+        
         return in_array($property_province, $this->enabled_provinces);
     }
     
