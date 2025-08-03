@@ -150,6 +150,9 @@ class TrentinoXmlParserMemoryOptimized {
         $current_property = null;
         $current_element = '';
         
+        // DEBUG: Analyze XML structure first
+        $this->debug_xml_structure($xml_file_path);
+        
         try {
             // Create XMLReader for streaming
             $reader = new XMLReader();
@@ -160,17 +163,43 @@ class TrentinoXmlParserMemoryOptimized {
             
             $this->logger->info('XMLReader opened successfully - starting streaming parse');
             
+            // DEBUG: Track elements found
+            $elements_found = [];
+            $depth = 0;
+            
             // Stream through XML
             while ($reader->read()) {
                 switch ($reader->nodeType) {
                     case XMLReader::ELEMENT:
-                        if ($reader->localName === 'immobile') {
+                        $depth++;
+                        $element_name = $reader->localName;
+                        
+                        // Track all elements for debugging
+                        if (!isset($elements_found[$element_name])) {
+                            $elements_found[$element_name] = 0;
+                        }
+                        $elements_found[$element_name]++;
+                        
+                        // Log first 10 elements for debugging
+                        if (array_sum($elements_found) <= 10) {
+                            $this->logger->info('XMLReader Element found', [
+                                'element' => $element_name,
+                                'depth' => $depth,
+                                'count' => $elements_found[$element_name]
+                            ]);
+                        }
+                        
+                        if ($element_name === 'immobile') {
                             // Start new property
                             $current_property = [];
                             $this->stats['total_properties']++;
+                            
+                            $this->logger->info('Property element found!', [
+                                'property_count' => $this->stats['total_properties']
+                            ]);
                         } else if ($current_property !== null) {
                             // Store current element name
-                            $current_element = $reader->localName;
+                            $current_element = $element_name;
                         }
                         break;
                         
@@ -185,6 +214,7 @@ class TrentinoXmlParserMemoryOptimized {
                         break;
                         
                     case XMLReader::END_ELEMENT:
+                        $depth--;
                         if ($reader->localName === 'immobile' && $current_property !== null) {
                             // Process completed property
                             $this->process_property($current_property, $properties);
@@ -217,16 +247,30 @@ class TrentinoXmlParserMemoryOptimized {
                     ]);
                     break;
                 }
+                
+                // Stop after processing some elements for initial debugging
+                if (array_sum($elements_found) > 1000 && $this->stats['total_properties'] === 0) {
+                    $this->logger->warning('Processed 1000+ elements but found 0 properties - stopping for analysis', [
+                        'elements_found' => $elements_found
+                    ]);
+                    break;
+                }
             }
             
             $reader->close();
+            
+            // Log final elements analysis
+            $this->logger->info('Final XML elements analysis', [
+                'total_elements_found' => $elements_found,
+                'immobile_count' => $elements_found['immobile'] ?? 0
+            ]);
             
             // Calculate final statistics
             $this->stats['end_time'] = microtime(true);
             $this->stats['duration'] = $this->stats['end_time'] - $this->stats['start_time'];
             $this->stats['memory_peak'] = memory_get_peak_usage(true);
             
-            $this->logger->info('Streaming XML parsing completed successfully', [
+            $this->logger->info('Streaming XML parsing completed', [
                 'total_properties' => $this->stats['total_properties'],
                 'valid_properties' => $this->stats['valid_properties'],
                 'filtered_properties' => $this->stats['filtered_properties'],
@@ -246,6 +290,37 @@ class TrentinoXmlParserMemoryOptimized {
             ]);
             
             return $this->error_result('Streaming parsing failed: ' . $e->getMessage());
+        }
+    }
+    
+    /**
+     * Debug XML structure by reading first chunk
+     */
+    private function debug_xml_structure($xml_file_path) {
+        $this->logger->info('=== XML STRUCTURE DEBUG ===');
+        
+        try {
+            $handle = fopen($xml_file_path, 'r');
+            $sample = fread($handle, 5120); // 5KB sample
+            fclose($handle);
+            
+            $this->logger->info('XML file sample (first 500 chars)', [
+                'sample' => substr($sample, 0, 500)
+            ]);
+            
+            // Count occurrences of common elements
+            $patterns = [
+                'immobile' => substr_count($sample, '<immobile'),
+                'property' => substr_count($sample, '<property'),
+                'listing' => substr_count($sample, '<listing'),
+                'annuncio' => substr_count($sample, '<annuncio'),
+                'item' => substr_count($sample, '<item')
+            ];
+            
+            $this->logger->info('Element patterns in sample', $patterns);
+            
+        } catch (Exception $e) {
+            $this->logger->error('XML structure debug failed', ['error' => $e->getMessage()]);
         }
     }
     
