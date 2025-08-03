@@ -101,7 +101,58 @@ class TrentinoImport {
     public static function get_instance() {
         if (self::$instance === null) {
             self::$instance = new self();
+        // Test XML Parser with sample data
+        if (isset($_POST['test_parser'])) {
+            $parser = new TrentinoXmlParser($logger);
+            
+            // Create sample XML file for testing
+            $sample_xml = $this->create_sample_xml();
+            $temp_file = wp_upload_dir()['basedir'] . '/trentino-import-temp/sample.xml';
+            
+            // Ensure temp directory exists
+            wp_mkdir_p(dirname($temp_file));
+            file_put_contents($temp_file, $sample_xml);
+            
+            $result = $parser->parse_xml_file($temp_file);
+            
+            if ($result['success']) {
+                echo '<div class="notice notice-success"><p>XML Parser test successful! Parsed ' . count($result['properties']) . ' properties.</p></div>';
+            }
+        
+        // Test XML Parser with sample data
+        if (isset($_POST['test_parser'])) {
+            $parser = new TrentinoXmlParser($logger);
+            
+            // Create sample XML file for testing
+            $sample_xml = $this->create_sample_xml();
+            $temp_file = wp_upload_dir()['basedir'] . '/trentino-import-temp/sample.xml';
+            
+            // Ensure temp directory exists
+            wp_mkdir_p(dirname($temp_file));
+            file_put_contents($temp_file, $sample_xml);
+            
+            $result = $parser->parse_xml_file($temp_file);
+            
+            if ($result['success']) {
+                echo '<div class="notice notice-success"><p>XML Parser test successful! Parsed ' . count($result['properties']) . ' properties.</p></div>';
+            } else {
+                echo '<div class="notice notice-error"><p>XML Parser test failed: ' . esc_html($result['error']) . '</p></div>';
+            }
+            
+            // Cleanup
+            if (file_exists($temp_file)) {
+                unlink($temp_file);
+            }
+        } else {
+                echo '<div class="notice notice-error"><p>XML Parser test failed: ' . esc_html($result['error']) . '</p></div>';
+            }
+            
+            // Cleanup
+            if (file_exists($temp_file)) {
+                unlink($temp_file);
+            }
         }
+        
         return self::$instance;
     }
 
@@ -163,6 +214,7 @@ class TrentinoImport {
         // Load core classes in order of dependency
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-logger.php';
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-xml-downloader.php';
+        require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-xml-parser.php';
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-github-updater.php';
 
         // TODO: Load other core classes from /includes/
@@ -179,6 +231,9 @@ class TrentinoImport {
         
         // Initialize XML Downloader
         $this->xml_downloader = new TrentinoXmlDownloader($this->logger);
+        
+        // Initialize XML Parser
+        $this->xml_parser = new TrentinoXmlParser($this->logger);
         
         // Initialize GitHub Updater
         if (is_admin()) {
@@ -276,6 +331,14 @@ class TrentinoImport {
             </div>
             
             <div class="card">
+                <h2>Test XML Parser</h2>
+                <form method="post">
+                    <p>Test XML parsing with sample data:</p>
+                    <input type="submit" name="test_parser" class="button button-secondary" value="Test XML Parser">
+                </form>
+            </div>
+            
+            <div class="card">
                 <h2>Recent Logs (Last 20)</h2>
                 <div style="background: #f1f1f1; padding: 10px; font-family: monospace; max-height: 400px; overflow-y: auto;">
                     <?php
@@ -329,6 +392,46 @@ class TrentinoImport {
             </div>
         </div>
         <?php
+    }
+    
+    /**
+     * TEMPORARY: Create sample XML for testing
+     */
+    private function create_sample_xml() {
+        return '<?xml version="1.0" encoding="UTF-8"?>
+<root>
+    <immobile>
+        <id_immobile>1001</id_immobile>
+        <titolo>Appartamento centro Trento</titolo>
+        <descrizione>Bellissimo appartamento nel centro storico di Trento</descrizione>
+        <prezzo_vendita>250000</prezzo_vendita>
+        <categoria>11</categoria>
+        <provincia>TN</provincia>
+        <citta>Trento</citta>
+        <indirizzo>Via Roma 15</indirizzo>
+        <superficie_commerciale>85</superficie_commerciale>
+        <numero_camere>3</numero_camere>
+        <numero_bagni>2</numero_bagni>
+        <ascensore>1</ascensore>
+        <giardino>0</giardino>
+    </immobile>
+    <immobile>
+        <id_immobile>1002</id_immobile>
+        <titolo>Villa con giardino Bolzano</titolo>
+        <descrizione>Villa indipendente con ampio giardino</descrizione>
+        <prezzo_vendita>450000</prezzo_vendita>
+        <categoria>18</categoria>
+        <provincia>BZ</provincia>
+        <citta>Bolzano</citta>
+        <indirizzo>Via dei Pini 8</indirizzo>
+        <superficie_commerciale>150</superficie_commerciale>
+        <numero_camere>4</numero_camere>
+        <numero_bagni>3</numero_bagni>
+        <ascensore>0</ascensore>
+        <giardino>1</giardino>
+        <piscina>1</piscina>
+    </immobile>
+</root>';
     }
 
     /**
