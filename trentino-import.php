@@ -193,13 +193,34 @@ class TrentinoImport {
             $parser = new TrentinoXmlParser($logger);
             $mapper = new TrentinoPropertyMapper($logger);
             
-            // Use the sample file you prepared
-            $sample_xml_path = '/public_html/trentino-test/sample-annunci.xml';
+            // Use the sample file you prepared - CORRECT SERVER PATH
+            $sample_xml_path = $_SERVER['DOCUMENT_ROOT'] . '/trentino-test/sample-annunci.xml';
+            // Alternative path if document root doesn't work
+            $alt_sample_path = '/home/u996-hh9emyr0bbn6/www/spaziodemo.xyz/public_html/trentino-test/sample-annunci.xml';
             
             echo '<div class="notice notice-info"><p><strong>SAMPLE XML TEST STARTED</strong> - Using sample file with 10k lines...</p></div>';
             
             $logger->info('=== SAMPLE XML TEST STARTED ===');
-            $logger->info('Testing with sample file: ' . $sample_xml_path);
+            $logger->info('Testing sample file paths:', [
+                'primary_path' => $sample_xml_path,
+                'alternative_path' => $alt_sample_path,
+                'document_root' => $_SERVER['DOCUMENT_ROOT'] ?? 'undefined'
+            ]);
+            
+            // Check which path exists
+            if (!file_exists($sample_xml_path)) {
+                $logger->warning('Primary path not found, trying alternative', ['path' => $sample_xml_path]);
+                if (file_exists($alt_sample_path)) {
+                    $sample_xml_path = $alt_sample_path;
+                    $logger->info('Using alternative path', ['path' => $alt_sample_path]);
+                } else {
+                    echo '<div class="notice notice-error"><p><strong>SAMPLE FILE NOT FOUND:</strong><br>';
+                    echo 'Primary: ' . esc_html($sample_xml_path) . '<br>';
+                    echo 'Alternative: ' . esc_html($alt_sample_path) . '<br>';
+                    echo 'Document Root: ' . esc_html($_SERVER['DOCUMENT_ROOT'] ?? 'undefined') . '</p></div>';
+                    return;
+                }
+            }
             
             // Parse sample XML
             $parse_result = $parser->parse_xml_file($sample_xml_path);
