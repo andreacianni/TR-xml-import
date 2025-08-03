@@ -73,27 +73,29 @@ class TrentinoPropertyMapper {
     }
     
     private function load_field_mappings() {
+        // Updated mappings for GestionaleImmobiliare XML structure
         $this->field_mappings = [
-            'post_title' => 'titolo',
-            'post_content' => 'descrizione',
-            'property_price' => 'prezzo_vendita',
-            'property_price_per_month' => 'prezzo_affitto',
-            'property_size' => 'superficie_commerciale',
-            'property_rooms' => 'numero_camere',
-            'property_bedrooms' => 'numero_camere',
-            'property_bathrooms' => 'numero_bagni',
-            'property_address' => 'indirizzo',
-            'property_city' => 'citta',
-            'property_zip' => 'cap',
-            'property_state' => 'provincia',
-            'property_country' => null,
-            'property_year' => 'anno_costruzione',
-            'property_floors' => 'numero_piani',
-            'property_floor' => 'piano',
-            'property_energy_class' => 'classe_energetica',
-            'property_id_gestionale' => 'id_immobile',
-            'property_ref' => null,
-            'property_source' => null
+            // XML uses different field names - updated mapping
+            'post_title' => 'title',              // <title> in <info>
+            'post_content' => 'description',        // <description> in <info> 
+            'property_price' => 'price',            // <price> in <info>
+            'property_price_per_month' => 'price',  // Same field, different logic
+            'property_size' => 'mq',               // <mq> in <info>
+            'property_rooms' => 'numero_camere',     // If exists
+            'property_bedrooms' => 'numero_camere',  // If exists
+            'property_bathrooms' => 'numero_bagni', // If exists
+            'property_address' => 'indirizzo',      // <indirizzo> in <info>
+            'property_city' => 'citta',            // Derived from comune
+            'property_zip' => 'cap',               // If exists
+            'property_state' => 'provincia',        // Derived from provincia
+            'property_country' => null,             // Default to Italy
+            'property_year' => 'anno_costruzione',  // If exists
+            'property_floors' => 'numero_piani',    // If exists
+            'property_floor' => 'piano',            // If exists
+            'property_energy_class' => 'ape',       // From <ape> classe attribute
+            'property_id_gestionale' => 'id',       // <id> in <info>
+            'property_ref' => null,                 // Generated
+            'property_source' => null               // Default
         ];
     }
     
@@ -101,7 +103,7 @@ class TrentinoPropertyMapper {
         $this->taxonomies = [
             'property_category' => [
                 'taxonomy' => 'property_category',
-                'source_field' => 'categoria',
+                'source_field' => 'categorie_id',      // Updated to categorie_id
                 'mapping' => [
                     1 => 'Casa Singola',
                     2 => 'Bifamiliare',
@@ -261,7 +263,8 @@ class TrentinoPropertyMapper {
             return true;
         }
         
-        $required_fields = ['id_immobile', 'titolo', 'categoria', 'provincia', 'citta'];
+        // Updated required fields for new XML structure
+        $required_fields = ['id', 'title', 'categorie_id'];
         
         foreach ($required_fields as $field) {
             if (!isset($xml_property[$field]) || empty($xml_property[$field])) {
@@ -269,7 +272,8 @@ class TrentinoPropertyMapper {
             }
         }
         
-        if (empty($xml_property['prezzo_vendita']) && empty($xml_property['prezzo_affitto'])) {
+        // Check price exists (always in 'price' field)
+        if (empty($xml_property['price'])) {
             return false;
         }
         
