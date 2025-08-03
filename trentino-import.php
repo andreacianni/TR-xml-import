@@ -160,7 +160,8 @@ class TrentinoImport {
      * Load all plugin files
      */
     private function load_plugin_files() {
-        // Load GitHub Updater first
+        // Load core classes in order of dependency
+        require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-logger.php';
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-github-updater.php';
 
         // TODO: Load other core classes from /includes/
