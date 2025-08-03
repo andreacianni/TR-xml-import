@@ -57,6 +57,36 @@ class TrentinoImport {
         if (self::$instance === null) {
             self::$instance = new self();
         }
+        
+        // Test Property Mapper with parsed data
+        if (isset($_POST['test_mapper'])) {
+            $parser = new TrentinoXmlParser($logger);
+            $mapper = new TrentinoPropertyMapper($logger);
+            
+            $sample_xml = $this->create_sample_xml();
+            $temp_file = wp_upload_dir()['basedir'] . '/trentino-import-temp/sample.xml';
+            
+            wp_mkdir_p(dirname($temp_file));
+            file_put_contents($temp_file, $sample_xml);
+            
+            $parse_result = $parser->parse_xml_file($temp_file);
+            
+            if ($parse_result['success']) {
+                $map_result = $mapper->map_properties($parse_result['properties']);
+                
+                if ($map_result['success']) {
+                    echo '<div class="notice notice-success"><p>Property Mapper test successful! Mapped ' . count($map_result['properties']) . ' properties with ' . count($map_result['properties'][0]['meta_fields']) . ' meta fields each.</p></div>';
+                } else {
+                    echo '<div class="notice notice-error"><p>Property Mapper test failed: Mapping error</p></div>';
+                }
+            } else {
+                echo '<div class="notice notice-error"><p>Property Mapper test failed: XML parsing failed</p></div>';
+            }
+            
+            if (file_exists($temp_file)) {
+                unlink($temp_file);
+            }
+        }
         return self::$instance;
     }
 
@@ -89,6 +119,7 @@ class TrentinoImport {
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-logger.php';
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-xml-downloader.php';
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-xml-parser.php';
+        require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-property-mapper.php';
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-github-updater.php';
     }
 
@@ -96,6 +127,7 @@ class TrentinoImport {
         $this->logger = TrentinoImportLogger::get_instance();
         $this->xml_downloader = new TrentinoXmlDownloader($this->logger);
         $this->xml_parser = new TrentinoXmlParser($this->logger);
+        $this->property_mapper = new TrentinoPropertyMapper($this->logger);
         
         if (is_admin()) {
             new TrentinoGitHubUpdater(TRENTINO_IMPORT_PLUGIN_FILE);
@@ -185,6 +217,14 @@ class TrentinoImport {
                 <form method="post">
                     <p>Click this button to test all logger functions:</p>
                     <input type="submit" name="test_logger" class="button button-primary" value="Run Logger Test">
+                </form>
+            </div>
+            
+            <div class="card">
+                <h2>Test Property Mapper</h2>
+                <form method="post">
+                    <p>Test complete XML parsing + property mapping chain:</p>
+                    <input type="submit" name="test_mapper" class="button button-secondary" value="Test Property Mapper">
                 </form>
             </div>
             
