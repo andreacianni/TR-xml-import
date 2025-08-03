@@ -139,17 +139,41 @@ class TrentinoXmlDownloader {
     /**
      * Download XML file from GestionaleImmobiliare.it
      *
-     * @param bool $force_download Force download even if recent file exists
+     * @param string|bool $username Username or force_download flag for backward compatibility
+     * @param string|null $password Password (when username is provided)
      * @return array Download result with success status and file path
      */
-    public function download_xml($force_download = false) {
+    public function download_xml($username = false, $password = null) {
+        // Handle backward compatibility and parameter overloading
+        $force_download = false;
+        $temp_credentials = null;
+        
+        if (is_string($username) && $password !== null) {
+            // New signature: download_xml($username, $password)
+            $temp_credentials = [
+                'username' => $username,
+                'password' => $password
+            ];
+            $force_download = true;
+        } elseif (is_bool($username)) {
+            // Old signature: download_xml($force_download)
+            $force_download = $username;
+        }
+        
         $this->logger->info('Starting XML download from GestionaleImmobiliare.it', [
             'force_download' => $force_download,
-            'username' => $this->gestionale_settings['username'] ? 'configured' : 'missing'
+            'temp_credentials' => $temp_credentials ? 'provided' : 'none',
+            'stored_username' => $this->gestionale_settings['username'] ? 'configured' : 'missing'
         ]);
         
+        // Use temporary credentials if provided, otherwise use stored ones
+        $active_credentials = $temp_credentials ?: [
+            'username' => $this->gestionale_settings['username'],
+            'password' => $this->gestionale_settings['password']
+        ];
+        
         // Validate credentials
-        if (!$this->validate_credentials()) {
+        if (!$this->validate_credentials($active_credentials)) {
             return $this->error_result('Invalid or missing credentials');
         }
         
@@ -168,24 +192,33 @@ class TrentinoXmlDownloader {
         $this->reset_stats();
         $this->stats['start_time'] = microtime(true);
         
-        $download_result = $this->perform_download();
+        $download_result = $this->perform_download($active_credentials);
         
         $this->stats['end_time'] = microtime(true);
         $this->stats['duration'] = $this->stats['end_time'] - $this->stats['start_time'];
         
         if ($download_result['success']) {
+            // Extract XML from archive
+            $extract_result = $this->extract_xml($download_result['file_path']);
+            
+            if (!$extract_result['success']) {
+                $this->logger->error('XML extraction failed', ['error' => $extract_result['error']]);
+                return $extract_result;
+            }
+            
             $this->stats['success'] = true;
             $this->calculate_download_speed();
             
-            $this->logger->info('XML download completed successfully', [
-                'file_path' => $download_result['file_path'],
-                'file_size' => size_format($this->stats['file_size']),
+            $this->logger->info('XML download and extraction completed successfully', [
+                'archive_path' => $download_result['file_path'],
+                'xml_file' => $extract_result['file_path'],
+                'xml_size' => size_format(filesize($extract_result['file_path'])),
                 'duration' => round($this->stats['duration'], 2) . 's',
                 'speed' => size_format($this->stats['download_speed']) . '/s',
                 'retries' => $this->stats['retries']
             ]);
             
-            return $download_result;
+            return $this->success_result($extract_result['file_path'], 'downloaded_and_extracted');
         } else {
             $this->logger->error('XML download failed', [
                 'error' => $download_result['error'],
@@ -200,13 +233,21 @@ class TrentinoXmlDownloader {
     /**
      * Validate GestionaleImmobiliare.it credentials
      *
+     * @param array|null $credentials Credentials array or null to use stored ones
      * @return bool Credentials are valid
      */
-    private function validate_credentials() {
-        if (empty($this->gestionale_settings['username']) || empty($this->gestionale_settings['password'])) {
+    private function validate_credentials($credentials = null) {
+        if ($credentials === null) {
+            $credentials = [
+                'username' => $this->gestionale_settings['username'],
+                'password' => $this->gestionale_settings['password']
+            ];
+        }
+        
+        if (empty($credentials['username']) || empty($credentials['password'])) {
             $this->logger->error('Missing GestionaleImmobiliare.it credentials', [
-                'username_set' => !empty($this->gestionale_settings['username']),
-                'password_set' => !empty($this->gestionale_settings['password'])
+                'username_set' => !empty($credentials['username']),
+                'password_set' => !empty($credentials['password'])
             ]);
             return false;
         }
@@ -258,9 +299,10 @@ class TrentinoXmlDownloader {
     /**
      * Perform the actual download with retry logic
      *
+     * @param array $credentials Active credentials to use
      * @return array Download result
      */
-    private function perform_download() {
+    private function perform_download($credentials) {
         $url = $this->gestionale_settings['base_url'] . $this->gestionale_settings['filename'];
         $temp_file = $this->temp_dir . 'download_' . uniqid() . '.tar.gz';
         
@@ -275,12 +317,12 @@ class TrentinoXmlDownloader {
                 sleep($this->config['retry_delay']);
             }
             
-            $result = $this->download_file($url, $temp_file);
+            $result = $this->download_file($url, $temp_file, $credentials);
             
             if ($result['success']) {
                 // Validate downloaded file
                 if ($this->validate_downloaded_file($temp_file)) {
-                    // Move to final location
+                    // Move to final location  
                     $final_path = $this->get_existing_file_path();
                     
                     if (rename($temp_file, $final_path)) {
@@ -326,9 +368,10 @@ class TrentinoXmlDownloader {
      *
      * @param string $url Download URL
      * @param string $file_path Local file path
+     * @param array $credentials Credentials to use
      * @return array Download result
      */
-    private function download_file($url, $file_path) {
+    private function download_file($url, $file_path, $credentials) {
         $this->logger->debug('Starting file download', [
             'url' => $url,
             'file_path' => $file_path
@@ -352,7 +395,7 @@ class TrentinoXmlDownloader {
             CURLOPT_SSL_VERIFYPEER => $this->config['verify_ssl'],
             CURLOPT_USERAGENT => $this->config['user_agent'],
             CURLOPT_HTTPAUTH => CURLAUTH_BASIC,
-            CURLOPT_USERPWD => $this->gestionale_settings['username'] . ':' . $this->gestionale_settings['password'],
+            CURLOPT_USERPWD => $credentials['username'] . ':' . $credentials['password'],
             CURLOPT_PROGRESSFUNCTION => [$this, 'curl_progress_callback'],
             CURLOPT_NOPROGRESS => false,
             CURLOPT_BUFFERSIZE => $this->config['chunk_size']
