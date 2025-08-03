@@ -217,8 +217,12 @@ class TrentinoImport {
             echo '<div class="notice notice-success"><p><strong>✅ DOWNLOAD SUCCESS:</strong> File size: ' . size_format(filesize($download_result['file_path'])) . '</p></div>';
             $logger->info('Download successful', ['file_size' => filesize($download_result['file_path'])]);
             
-            // Step 2: Parse real XML
-            $logger->info('Step 2: Parsing real XML data');
+            // Step 2: Parse real XML with DEBUG
+            $logger->info('Step 2: Parsing real XML data with structure analysis');
+            
+            // First, analyze XML structure
+            $this->analyze_xml_structure($download_result['file_path'], $logger);
+            
             $parse_result = $parser->parse_xml_file($download_result['file_path']);
             
             if (!$parse_result['success']) {
@@ -271,7 +275,7 @@ class TrentinoImport {
             echo '<p><strong>📊 REAL DATA ANALYSIS:</strong></p>';
             echo '<p><strong>Provinces:</strong> ' . implode(', ', array_map(function($k, $v) { return "$k ($v)"; }, array_keys($provinces), $provinces)) . '</p>';
             echo '<p><strong>Categories:</strong> ' . implode(', ', array_map(function($k, $v) { return "$k ($v)"; }, array_keys($categories), $categories)) . '</p>';
-            echo '<p><strong>Meta Fields per Property:</strong> ' . count($sample_property['meta_fields']) . '</p>';
+            echo '<p><strong>Meta Fields per Property:</strong> ' . ($sample_property ? count($sample_property['meta_fields'] ?? []) : 'N/A') . '</p>';
             echo '</div>';
             
             // Step 5: Show sample property details
@@ -467,6 +471,50 @@ class TrentinoImport {
         <piscina>1</piscina>
     </immobile>
 </root>';
+    }
+    
+    /**
+     * Analyze XML structure for debugging
+     */
+    private function analyze_xml_structure($xml_file_path, $logger) {
+        $logger->info('=== XML STRUCTURE ANALYSIS ===');
+        
+        try {
+            // Read first 10KB of file to analyze structure
+            $handle = fopen($xml_file_path, 'r');
+            $sample = fread($handle, 10240); // 10KB
+            fclose($handle);
+            
+            // Extract root element and first few tags
+            if (preg_match('/<([^\s\/>]+)/', $sample, $root_match)) {
+                $logger->info('XML Root element found', ['root' => $root_match[1]]);
+            }
+            
+            // Look for common property tags
+            $property_patterns = [
+                'immobile' => '/<immobile[^>]*>/',
+                'property' => '/<property[^>]*>/',
+                'listing' => '/<listing[^>]*>/',
+                'annuncio' => '/<annuncio[^>]*>/',
+                'item' => '/<item[^>]*>/',
+                'record' => '/<record[^>]*>/'
+            ];
+            
+            $found_patterns = [];
+            foreach ($property_patterns as $name => $pattern) {
+                if (preg_match_all($pattern, $sample, $matches)) {
+                    $found_patterns[$name] = count($matches[0]);
+                }
+            }
+            
+            $logger->info('Property container analysis', $found_patterns);
+            
+            // Sample content logging (first 500 chars)
+            $logger->info('XML Sample content', ['sample' => substr($sample, 0, 500)]);
+            
+        } catch (Exception $e) {
+            $logger->error('XML structure analysis failed', ['error' => $e->getMessage()]);
+        }
     }
 
     public function activate_plugin() {
