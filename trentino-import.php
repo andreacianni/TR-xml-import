@@ -86,9 +86,11 @@ class TrentinoImport {
     }
 
     private function load_plugin_files() {
+        // Load plugin files and components
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-logger.php';
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-xml-downloader.php';
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-xml-parser.php';
+        require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-xml-parser-memory-optimized.php';
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-property-mapper.php';
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-github-updater.php';
     }
@@ -186,10 +188,10 @@ class TrentinoImport {
             }
         }
         
-        // Test REAL IMPORT - Complete End-to-End Workflow
+        // Test REAL IMPORT - Complete End-to-End Workflow with Memory Optimization
         if (isset($_POST['test_real_import'])) {
             $downloader = new TrentinoXmlDownloader($logger);
-            $parser = new TrentinoXmlParser($logger);
+            $parser = new TrentinoXmlParserMemoryOptimized($logger); // Use memory-optimized parser for large files
             $mapper = new TrentinoPropertyMapper($logger);
             
             echo '<div class="notice notice-info"><p><strong>REAL IMPORT TEST STARTED</strong> - Testing complete workflow with live XML data...</p></div>';
