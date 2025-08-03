@@ -57,36 +57,6 @@ class TrentinoImport {
         if (self::$instance === null) {
             self::$instance = new self();
         }
-        
-        // Test Property Mapper with parsed data
-        if (isset($_POST['test_mapper'])) {
-            $parser = new TrentinoXmlParser($logger);
-            $mapper = new TrentinoPropertyMapper($logger);
-            
-            $sample_xml = $this->create_sample_xml();
-            $temp_file = wp_upload_dir()['basedir'] . '/trentino-import-temp/sample.xml';
-            
-            wp_mkdir_p(dirname($temp_file));
-            file_put_contents($temp_file, $sample_xml);
-            
-            $parse_result = $parser->parse_xml_file($temp_file);
-            
-            if ($parse_result['success']) {
-                $map_result = $mapper->map_properties($parse_result['properties']);
-                
-                if ($map_result['success']) {
-                    echo '<div class="notice notice-success"><p>Property Mapper test successful! Mapped ' . count($map_result['properties']) . ' properties with ' . count($map_result['properties'][0]['meta_fields']) . ' meta fields each.</p></div>';
-                } else {
-                    echo '<div class="notice notice-error"><p>Property Mapper test failed: Mapping error</p></div>';
-                }
-            } else {
-                echo '<div class="notice notice-error"><p>Property Mapper test failed: XML parsing failed</p></div>';
-            }
-            
-            if (file_exists($temp_file)) {
-                unlink($temp_file);
-            }
-        }
         return self::$instance;
     }
 
@@ -179,6 +149,36 @@ class TrentinoImport {
                 echo '<div class="notice notice-success"><p>XML Parser test successful! Parsed ' . count($result['properties']) . ' properties.</p></div>';
             } else {
                 echo '<div class="notice notice-error"><p>XML Parser test failed: ' . esc_html($result['error']) . '</p></div>';
+            }
+            
+            if (file_exists($temp_file)) {
+                unlink($temp_file);
+            }
+        }
+        
+        // Test Property Mapper with parsed data
+        if (isset($_POST['test_mapper'])) {
+            $parser = new TrentinoXmlParser($logger);
+            $mapper = new TrentinoPropertyMapper($logger);
+            
+            $sample_xml = $this->create_sample_xml();
+            $temp_file = wp_upload_dir()['basedir'] . '/trentino-import-temp/sample.xml';
+            
+            wp_mkdir_p(dirname($temp_file));
+            file_put_contents($temp_file, $sample_xml);
+            
+            $parse_result = $parser->parse_xml_file($temp_file);
+            
+            if ($parse_result['success']) {
+                $map_result = $mapper->map_properties($parse_result['properties']);
+                
+                if ($map_result['success']) {
+                    echo '<div class="notice notice-success"><p>Property Mapper test successful! Mapped ' . count($map_result['properties']) . ' properties with ' . count($map_result['properties'][0]['meta_fields']) . ' meta fields each.</p></div>';
+                } else {
+                    echo '<div class="notice notice-error"><p>Property Mapper test failed: Mapping error</p></div>';
+                }
+            } else {
+                echo '<div class="notice notice-error"><p>Property Mapper test failed: XML parsing failed</p></div>';
             }
             
             if (file_exists($temp_file)) {
