@@ -212,12 +212,12 @@ class TrentinoImport {
                 return;
             }
             
-            echo '<div class="notice notice-success"><p><strong>✅ DOWNLOAD SUCCESS:</strong> File size: ' . size_format(filesize($download_result['xml_file'])) . '</p></div>';
-            $logger->info('Download successful', ['file_size' => filesize($download_result['xml_file'])]);
+            echo '<div class="notice notice-success"><p><strong>✅ DOWNLOAD SUCCESS:</strong> File size: ' . size_format(filesize($download_result['file_path'])) . '</p></div>';
+            $logger->info('Download successful', ['file_size' => filesize($download_result['file_path'])]);
             
             // Step 2: Parse real XML
             $logger->info('Step 2: Parsing real XML data');
-            $parse_result = $parser->parse_xml_file($download_result['xml_file']);
+            $parse_result = $parser->parse_xml_file($download_result['file_path']);
             
             if (!$parse_result['success']) {
                 echo '<div class="notice notice-error"><p><strong>PARSING FAILED:</strong> ' . esc_html($parse_result['error']) . '</p></div>';
@@ -296,8 +296,8 @@ class TrentinoImport {
             ]);
             
             // Cleanup
-            if (file_exists($download_result['xml_file'])) {
-                unlink($download_result['xml_file']);
+            if (file_exists($download_result['file_path'])) {
+                unlink($download_result['file_path']);
             }
         }
         
