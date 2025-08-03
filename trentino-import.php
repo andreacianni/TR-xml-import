@@ -20,32 +20,6 @@
  * This plugin provides automated import functionality for real estate listings
  * from GestionaleImmobiliare.it XML feeds, specifically designed for integration
  * with the WpResidence theme.
- *
- * Features:
- * - Automated daily XML import from GestionaleImmobiliare.it
- * - Admin interface with 3-tab dashboard (Settings, Manual Import, Logs)
- * - Complete mapping XML fields → WpResidence properties
- * - Configurable province filtering
- * - Manual import triggers for troubleshooting
- * - Comprehensive logging and error handling
- * - WordPress cron integration for automation
- * - Secure credentials management
- * - Batch processing for performance
- *
- * Directory Structure:
- * /includes/          - Core functionality classes
- * /admin/             - Admin interface and views
- * /config/            - Configuration files and mapping
- * /logs/              - Import logs and error tracking
- *
- * Main Classes:
- * - XML_Downloader    - Download and authenticate XML from gestionale
- * - XML_Parser        - Parse and validate XML structure
- * - Property_Mapper   - Map XML fields to WpResidence format
- * - WP_Importer       - Import properties into WordPress
- * - Logger            - Comprehensive logging system
- * - Cron_Manager      - WordPress cron automation
- * - Admin_Page        - Admin interface controller
  */
 
 // Prevent direct access
@@ -66,25 +40,11 @@ define('TRENTINO_IMPORT_MIN_WP_VERSION', '5.0');
 
 /**
  * Main plugin class - TrentinoImport
- *
- * Handles plugin initialization, activation, deactivation and core functionality
- * orchestration. This is the main entry point for the plugin.
  */
 class TrentinoImport {
 
-    /**
-     * Plugin instance (Singleton pattern)
-     */
     private static $instance = null;
-
-    /**
-     * Plugin initialization flag
-     */
     private $initialized = false;
-
-    /**
-     * Plugin components
-     */
     private $admin_page = null;
     private $xml_downloader = null;
     private $xml_parser = null;
@@ -93,172 +53,59 @@ class TrentinoImport {
     private $logger = null;
     private $cron_manager = null;
 
-    /**
-     * Get plugin instance (Singleton)
-     *
-     * @return TrentinoImport
-     */
     public static function get_instance() {
         if (self::$instance === null) {
             self::$instance = new self();
-        // Test XML Parser with sample data
-        if (isset($_POST['test_parser'])) {
-            $parser = new TrentinoXmlParser($logger);
-            
-            // Create sample XML file for testing
-            $sample_xml = $this->create_sample_xml();
-            $temp_file = wp_upload_dir()['basedir'] . '/trentino-import-temp/sample.xml';
-            
-            // Ensure temp directory exists
-            wp_mkdir_p(dirname($temp_file));
-            file_put_contents($temp_file, $sample_xml);
-            
-            $result = $parser->parse_xml_file($temp_file);
-            
-            if ($result['success']) {
-                echo '<div class="notice notice-success"><p>XML Parser test successful! Parsed ' . count($result['properties']) . ' properties.</p></div>';
-            }
-        
-        // Test XML Parser with sample data
-        if (isset($_POST['test_parser'])) {
-            $parser = new TrentinoXmlParser($logger);
-            
-            // Create sample XML file for testing
-            $sample_xml = $this->create_sample_xml();
-            $temp_file = wp_upload_dir()['basedir'] . '/trentino-import-temp/sample.xml';
-            
-            // Ensure temp directory exists
-            wp_mkdir_p(dirname($temp_file));
-            file_put_contents($temp_file, $sample_xml);
-            
-            $result = $parser->parse_xml_file($temp_file);
-            
-            if ($result['success']) {
-                echo '<div class="notice notice-success"><p>XML Parser test successful! Parsed ' . count($result['properties']) . ' properties.</p></div>';
-            } else {
-                echo '<div class="notice notice-error"><p>XML Parser test failed: ' . esc_html($result['error']) . '</p></div>';
-            }
-            
-            // Cleanup
-            if (file_exists($temp_file)) {
-                unlink($temp_file);
-            }
-        } else {
-                echo '<div class="notice notice-error"><p>XML Parser test failed: ' . esc_html($result['error']) . '</p></div>';
-            }
-            
-            // Cleanup
-            if (file_exists($temp_file)) {
-                unlink($temp_file);
-            }
         }
-        
         return self::$instance;
     }
 
-    /**
-     * Private constructor (Singleton pattern)
-     */
     private function __construct() {
         // Plugin will be initialized via init_plugin() method
     }
 
-    /**
-     * Initialize the plugin
-     *
-     * This method handles all the plugin initialization logic including
-     * requirements check, file loading, hooks registration, etc.
-     */
     public function init_plugin() {
-        // Prevent double initialization
         if ($this->initialized) {
             return;
         }
 
-        // Check system requirements
         if (!$this->check_requirements()) {
             return;
         }
 
-        // Load plugin files and initialize components
         $this->load_plugin_files();
         $this->init_components();
         $this->register_hooks();
 
-        // Mark as initialized
         $this->initialized = true;
-
-        // Hook for other plugins to know we're ready
         do_action('trentino_import_plugin_loaded');
     }
 
-    /**
-     * Check if system meets plugin requirements
-     *
-     * @return bool True if requirements are met, false otherwise
-     */
     private function check_requirements() {
-        // TODO: Implement requirements check
-        // - PHP version
-        // - WordPress version
-        // - WpResidence theme active
-        // - Required PHP extensions (curl, simplexml, etc.)
-
         return true;
     }
 
-    /**
-     * Load all plugin files
-     */
     private function load_plugin_files() {
-        // Load core classes in order of dependency
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-logger.php';
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-xml-downloader.php';
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-xml-parser.php';
         require_once TRENTINO_IMPORT_PLUGIN_DIR . 'includes/class-github-updater.php';
-
-        // TODO: Load other core classes from /includes/
-        // TODO: Load admin classes from /admin/
-        // TODO: Load configuration files from /config/
     }
 
-    /**
-     * Initialize plugin components
-     */
     private function init_components() {
-        // Initialize Logger first
         $this->logger = TrentinoImportLogger::get_instance();
-        
-        // Initialize XML Downloader
         $this->xml_downloader = new TrentinoXmlDownloader($this->logger);
-        
-        // Initialize XML Parser
         $this->xml_parser = new TrentinoXmlParser($this->logger);
         
-        // Initialize GitHub Updater
         if (is_admin()) {
             new TrentinoGitHubUpdater(TRENTINO_IMPORT_PLUGIN_FILE);
         }
-
-        // TODO: Initialize other plugin components
-        // Create instances of main classes
-        // Set up component dependencies
     }
 
-    /**
-     * Register WordPress hooks
-     */
     private function register_hooks() {
-        // TODO: Register all WordPress hooks
-        // Admin hooks, cron hooks, ajax hooks, etc.
-        
-        // TEMPORARY: Logger test hook
         add_action('admin_menu', [$this, 'add_test_logger_page']);
     }
     
-    /**
-     * TEMPORARY: Add logger test page
-     */
     public function add_test_logger_page() {
         add_plugins_page(
             'Logger Test',
@@ -269,9 +116,6 @@ class TrentinoImport {
         );
     }
     
-    /**
-     * TEMPORARY: Logger test page content
-     */
     public function logger_test_page() {
         $logger = trentino_import_logger();
         
@@ -284,6 +128,29 @@ class TrentinoImport {
                 echo '<div class="notice notice-success"><p>Connection test successful!</p></div>';
             } else {
                 echo '<div class="notice notice-error"><p>Connection test failed: ' . esc_html($result['error']) . '</p></div>';
+            }
+        }
+        
+        // Test XML Parser with sample data
+        if (isset($_POST['test_parser'])) {
+            $parser = new TrentinoXmlParser($logger);
+            
+            $sample_xml = $this->create_sample_xml();
+            $temp_file = wp_upload_dir()['basedir'] . '/trentino-import-temp/sample.xml';
+            
+            wp_mkdir_p(dirname($temp_file));
+            file_put_contents($temp_file, $sample_xml);
+            
+            $result = $parser->parse_xml_file($temp_file);
+            
+            if ($result['success']) {
+                echo '<div class="notice notice-success"><p>XML Parser test successful! Parsed ' . count($result['properties']) . ' properties.</p></div>';
+            } else {
+                echo '<div class="notice notice-error"><p>XML Parser test failed: ' . esc_html($result['error']) . '</p></div>';
+            }
+            
+            if (file_exists($temp_file)) {
+                unlink($temp_file);
             }
         }
         
@@ -394,9 +261,6 @@ class TrentinoImport {
         <?php
     }
     
-    /**
-     * TEMPORARY: Create sample XML for testing
-     */
     private function create_sample_xml() {
         return '<?xml version="1.0" encoding="UTF-8"?>
 <root>
@@ -434,69 +298,31 @@ class TrentinoImport {
 </root>';
     }
 
-    /**
-     * Plugin activation hook
-     */
     public function activate_plugin() {
-        // TODO: Implement activation logic
-        // - Create database tables if needed
-        // - Set default options
-        // - Schedule cron events
-        // - Check permissions and requirements
-
-        // Flush rewrite rules
         flush_rewrite_rules();
     }
 
-    /**
-     * Plugin deactivation hook
-     */
     public function deactivate_plugin() {
-        // TODO: Implement deactivation logic
-        // - Clear scheduled cron events
-        // - Clean up temporary files
-        // - Flush rewrite rules
-
         flush_rewrite_rules();
     }
 
-    /**
-     * Plugin uninstall hook
-     */
     public static function uninstall_plugin() {
         // TODO: Implement uninstall logic
-        // - Remove database tables
-        // - Delete plugin options
-        // - Clean up files and directories
-        // - Remove scheduled events
     }
 }
 
-/**
- * Initialize the plugin
- *
- * This is the main entry point - WordPress will call this when loading the plugin
- */
 function trentino_import_init() {
     $plugin = TrentinoImport::get_instance();
     $plugin->init_plugin();
 }
 
-// Hook plugin initialization to WordPress init
 add_action('init', 'trentino_import_init');
-
-// Register activation/deactivation hooks
 register_activation_hook(__FILE__, [TrentinoImport::get_instance(), 'activate_plugin']);
 register_deactivation_hook(__FILE__, [TrentinoImport::get_instance(), 'deactivate_plugin']);
 register_uninstall_hook(__FILE__, ['TrentinoImport', 'uninstall_plugin']);
 
-/**
- * Helper function to get plugin instance from anywhere
- *
- * @return TrentinoImport
- */
 function trentino_import() {
     return TrentinoImport::get_instance();
 }
 
-// End of file - Ready for development!
+// End of file
