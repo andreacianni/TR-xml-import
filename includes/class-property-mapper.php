@@ -165,7 +165,7 @@ class TrentinoPropertyMapper {
     private function load_custom_fields_mapping() {
         $this->custom_fields = [
             'property_import_source' => null,
-            'property_import_id' => 'id_immobile',
+            'property_import_id' => 'id',
             'property_import_date' => null,
             'property_import_hash' => null,
             'property_last_sync' => null
@@ -263,8 +263,8 @@ class TrentinoPropertyMapper {
             return true;
         }
         
-        // Updated required fields for new XML structure
-        $required_fields = ['id', 'title', 'categorie_id'];
+        // Updated required fields for actual XML structure
+        $required_fields = ['id'];
         
         foreach ($required_fields as $field) {
             if (!isset($xml_property[$field]) || empty($xml_property[$field])) {
@@ -285,8 +285,8 @@ class TrentinoPropertyMapper {
             'post_type' => 'estate_property',
             'post_status' => $this->config['default_post_status'],
             'post_author' => $this->config['default_post_author'],
-            'post_title' => $this->sanitize_title($xml_property['titolo']),
-            'post_content' => $this->sanitize_content($xml_property['descrizione'] ?? ''),
+            'post_title' => $this->sanitize_title($xml_property['abstract'] ?? $xml_property['seo_title'] ?? 'Proprietà'),
+            'post_content' => $this->sanitize_content($xml_property['description'] ?? ''),
             'post_excerpt' => '',
             'post_name' => '',
             'comment_status' => 'closed',
@@ -298,7 +298,7 @@ class TrentinoPropertyMapper {
         }
         
         if ($this->config['slug_from_title']) {
-            $post_data['post_name'] = $this->generate_slug($post_data['post_title'], $xml_property['id_immobile']);
+            $post_data['post_name'] = $this->generate_slug($post_data['post_title'], $xml_property['id'] ?? 'unknown');
         }
         
         return $post_data;
@@ -403,11 +403,11 @@ class TrentinoPropertyMapper {
         $mapped['meta_fields']['property_import_date'] = $timestamp;
         $mapped['meta_fields']['property_last_sync'] = $timestamp;
         
-        if (isset($xml_property['id_immobile'])) {
-            $mapped['meta_fields']['property_import_id'] = $xml_property['id_immobile'];
+        if (isset($xml_property['id'])) {
+            $mapped['meta_fields']['property_import_id'] = $xml_property['id'];
             
             if ($this->config['generate_property_code']) {
-                $mapped['meta_fields']['property_ref'] = 'TI-' . $xml_property['id_immobile'];
+                $mapped['meta_fields']['property_ref'] = 'TI-' . $xml_property['id'];
             }
         }
         
@@ -415,7 +415,7 @@ class TrentinoPropertyMapper {
     }
     
     private function generate_content_hash($xml_property) {
-        $hash_fields = ['id_immobile', 'titolo', 'prezzo_vendita', 'prezzo_affitto', 'descrizione'];
+        $hash_fields = ['id', 'abstract', 'price', 'description'];
         $hash_data = [];
         
         foreach ($hash_fields as $field) {
@@ -459,7 +459,7 @@ class TrentinoPropertyMapper {
                 return 'GestionaleImmobiliare';
                 
             case 'property_ref':
-                return isset($xml_property['id_immobile']) ? 'TI-' . $xml_property['id_immobile'] : '';
+                return isset($xml_property['id']) ? 'TI-' . $xml_property['id'] : '';
                 
             default:
                 return null;

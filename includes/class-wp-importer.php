@@ -173,7 +173,7 @@ class TrentinoWpImporter {
                         $this->stats['failed_properties']++;
                         $this->stats['errors'][] = [
                             'property_index' => $property_index,
-                            'property_id' => $mapped_property['source_data']['id_immobile'] ?? 'unknown',
+                            'property_id' => $mapped_property['source_data']['id'] ?? 'unknown',
                             'error' => $result['error']
                         ];
                     }
@@ -182,7 +182,7 @@ class TrentinoWpImporter {
                     $this->stats['failed_properties']++;
                     $this->stats['errors'][] = [
                         'property_index' => $property_index,
-                        'property_id' => $mapped_property['source_data']['id_immobile'] ?? 'unknown',
+                        'property_id' => $mapped_property['source_data']['id'] ?? 'unknown',
                         'error' => $e->getMessage()
                     ];
                     
@@ -249,7 +249,7 @@ class TrentinoWpImporter {
         }
         
         // Get import ID for duplicate checking
-        $import_id = $mapped_property['source_data']['id_immobile'] ?? null;
+        $import_id = $mapped_property['source_data']['id'] ?? null;
         if (!$import_id) {
             return [
                 'success' => false,
@@ -655,6 +655,109 @@ class TrentinoWpImporter {
         }
         
         return $success;
+    }
+    
+    /**
+     * Create property - Method required by ChunkedImportEngine
+     *
+     * @param array $property_data Property data from XML
+     * @return array Result with success status and post_id
+     */
+    public function create_property($property_data) {
+        try {
+            // Use the main import method for single property
+            $result = $this->import_single_property([
+                'post_data' => [
+                    'post_type' => 'estate_property',
+                    'post_status' => 'publish',
+                    'post_author' => 1,
+                    'post_title' => $property_data['abstract'] ?? $property_data['seo_title'] ?? 'Proprietà',
+                    'post_content' => $property_data['description'] ?? '',
+                    'comment_status' => 'closed',
+                    'ping_status' => 'closed'
+                ],
+                'meta_fields' => [
+                    'property_price' => $property_data['price'] ?? null,
+                    'property_size' => $property_data['mq'] ?? null,
+                    'property_import_id' => $property_data['id'],
+                    'property_import_source' => 'GestionaleImmobiliare',
+                    'property_import_date' => current_time('mysql')
+                ],
+                'taxonomies' => [],
+                'features' => [],
+                'custom_fields' => [],
+                'source_data' => $property_data
+            ], 0);
+            
+            return [
+                'success' => $result['success'],
+                'post_id' => $result['post_id'] ?? null,
+                'action' => $result['action'] ?? 'unknown',
+                'message' => $result['message'] ?? $result['error'] ?? 'Unknown result'
+            ];
+            
+        } catch (Exception $e) {
+            $this->logger->error('create_property failed', [
+                'property_id' => $property_data['id'] ?? 'unknown',
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'success' => false,
+                'post_id' => null,
+                'message' => 'Create failed: ' . $e->getMessage()
+            ];
+        }
+    }
+    
+    /**
+     * Update property - Method required by ChunkedImportEngine
+     *
+     * @param int $post_id WordPress post ID
+     * @param array $property_data Property data from XML
+     * @return array Result with success status
+     */
+    public function update_property($post_id, $property_data) {
+        try {
+            // Use the main update method
+            $result = $this->update_existing_property($post_id, [
+                'post_data' => [
+                    'ID' => $post_id,
+                    'post_title' => $property_data['abstract'] ?? $property_data['seo_title'] ?? 'Proprietà',
+                    'post_content' => $property_data['description'] ?? '',
+                ],
+                'meta_fields' => [
+                    'property_price' => $property_data['price'] ?? null,
+                    'property_size' => $property_data['mq'] ?? null,
+                    'property_last_sync' => current_time('mysql')
+                ],
+                'taxonomies' => [],
+                'features' => [],
+                'custom_fields' => [],
+                'source_data' => $property_data,
+                'content_hash' => md5(serialize($property_data))
+            ], $property_data['id'] ?? 'unknown');
+            
+            return [
+                'success' => $result['success'],
+                'post_id' => $post_id,
+                'action' => $result['action'] ?? 'unknown',
+                'message' => $result['message'] ?? $result['error'] ?? 'Unknown result'
+            ];
+            
+        } catch (Exception $e) {
+            $this->logger->error('update_property failed', [
+                'post_id' => $post_id,
+                'property_id' => $property_data['id'] ?? 'unknown',
+                'error' => $e->getMessage()
+            ]);
+            
+            return [
+                'success' => false,
+                'post_id' => $post_id,
+                'message' => 'Update failed: ' . $e->getMessage()
+            ];
+        }
     }
     
     /**
