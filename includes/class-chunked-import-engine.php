@@ -277,36 +277,42 @@ class TrentinoChunkedImportEngine {
         
         if ($change_status['action'] === 'insert') {
             // Nuova property
-            $mapped_data = $this->property_mapper->map_xml_to_wpresidence($property_data);
-            $wp_post_id = $this->wp_importer->create_property($mapped_data);
-            
-            if ($wp_post_id) {
-                $this->tracking_manager->update_tracking_record(
-                    $property_id, 
-                    $property_hash, 
-                    $wp_post_id, 
-                    $property_data, 
-                    'active'
-                );
-                $this->stats['new_properties']++;
+            $mapped_result = $this->property_mapper->map_properties([$property_data]);
+            if ($mapped_result['success'] && !empty($mapped_result['properties'])) {
+                $mapped_data = $mapped_result['properties'][0];
+                $wp_post_id = $this->wp_importer->create_property($mapped_data);
+                
+                if ($wp_post_id) {
+                    $this->tracking_manager->update_tracking_record(
+                        $property_id, 
+                        $property_hash, 
+                        $wp_post_id, 
+                        $property_data, 
+                        'active'
+                    );
+                    $this->stats['new_properties']++;
+                }
             }
             
         } elseif ($change_status['action'] === 'update') {
             // Property esistente da aggiornare
-            $mapped_data = $this->property_mapper->map_xml_to_wpresidence($property_data);
-            $wp_post_id = $change_status['wp_post_id'];
-            
-            $success = $this->wp_importer->update_property($wp_post_id, $mapped_data);
-            
-            if ($success) {
-                $this->tracking_manager->update_tracking_record(
-                    $property_id, 
-                    $property_hash, 
-                    $wp_post_id, 
-                    $property_data, 
-                    'active'
-                );
-                $this->stats['updated_properties']++;
+            $mapped_result = $this->property_mapper->map_properties([$property_data]);
+            if ($mapped_result['success'] && !empty($mapped_result['properties'])) {
+                $mapped_data = $mapped_result['properties'][0];
+                $wp_post_id = $change_status['wp_post_id'];
+                
+                $success = $this->wp_importer->update_property($wp_post_id, $mapped_data);
+                
+                if ($success) {
+                    $this->tracking_manager->update_tracking_record(
+                        $property_id, 
+                        $property_hash, 
+                        $wp_post_id, 
+                        $property_data, 
+                        'active'
+                    );
+                    $this->stats['updated_properties']++;
+                }
             }
         }
         
