@@ -593,7 +593,43 @@ class TrentinoImport {
     }
 
     public function activate_plugin() {
+        $this->create_database_tables();
         flush_rewrite_rules();
+    }
+    
+    /**
+     * Create required database tables on activation
+     */
+    private function create_database_tables() {
+        global $wpdb;
+        
+        $table_name = $wpdb->prefix . 'trentino_import_tracking';
+        
+        $charset_collate = $wpdb->get_charset_collate();
+        
+        $sql = "CREATE TABLE $table_name (
+            id int(11) NOT NULL AUTO_INCREMENT,
+            property_id varchar(255) NOT NULL,
+            content_hash varchar(64),
+            last_import_date datetime DEFAULT NULL,
+            status varchar(50) DEFAULT 'imported',
+            created_at timestamp DEFAULT CURRENT_TIMESTAMP,
+            updated_at timestamp DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY unique_property (property_id),
+            KEY idx_last_import (last_import_date),
+            KEY idx_status (status)
+        ) $charset_collate;";
+        
+        require_once(ABSPATH . 'wp-admin/includes/upgrade.php');
+        dbDelta($sql);
+        
+        // Log table creation
+        if ($this->logger) {
+            $this->logger->info('Database tables created on plugin activation', [
+                'table_name' => $table_name
+            ]);
+        }
     }
 
     public function deactivate_plugin() {
