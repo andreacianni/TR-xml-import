@@ -1,60 +1,81 @@
-# Trentino Import Plugin - Development
+# RealEstate Sync Plugin - Git Ignore Rules
 
-# WordPress
-wp-config.php
+# === WordPress Core Files ===
 wp-content/
 wp-admin/
 wp-includes/
+*.log
 
-# Development tools
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+# === Temporary Deploy Scripts ===
+*.sh
+check-server-file.sh
+deploy-*.sh
+emergency-deploy.sh
+get-logs.sh
+hotfix-*.sh
+quick-deploy-*.sh
 
-# IDE files
-.vscode/settings.json
+# === Temporary PHP Files ===
+FILE-SU-GITHUB-*
+FILE-SUL-SERVER*
+trentino-import.php
+analyze-xml.js
+
+# === Temporary Directories ===
+_temp_to_delete/
+TR-xml-import-*/
+manuale/
+temp/
+backup/
+
+# === Log Files ===
+*.log
+logs/*.log
+realestate-sync-plugin/logs/*.log
+trentino-import-plugin/logs/*.log
+
+# === System Files ===
+Thumbs.db
+.DS_Store
+*.tmp
+*.temp
+Nuovo\ Documento\ di\ testo.txt
+
+# === IDE Files ===
+.vscode/
 .idea/
 *.swp
 *.swo
 *~
 
-# OS files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
+# === Node Modules (if any) ===
+node_modules/
+package-lock.json
 
-# Logs
-*.log
-logs/*.log
-/logs/import-logs/*.log
+# === Credentials & Config ===
+*.env
+config.local.php
+wp-config-local.php
 
-# Temporary files
-*.tmp
-*.temp
-/temp/
-/tmp/
+# === Archive Files ===
+*.zip
+*.tar
+*.tar.gz
+*.rar
 
-# Plugin specific
-/logs/import-logs/*
-!/logs/import-logs/.gitkeep
-/config/credentials.php
+# === Keep Structure ===
+!.gitkeep
+!readme.md
+!README.md
 
-# Backup files
-*.bak
-*.backup
-*.old
+# === Plugin Development ===
+# Keep main development folders
+!realestate-sync-plugin/
+!trentino-import-plugin/
+!docs/
 
-# Development only
-/testing/
-/debug/
-/sandbox/
-
-# Sensitive data
-ACCESSI.txt
-.env
-.env.local
+# But ignore temp files inside
+realestate-sync-plugin/logs/*
+!realestate-sync-plugin/logs/.gitkeep
+trentino-import-plugin/logs/*
+!trentino-import-plugin/logs/.gitkeep
